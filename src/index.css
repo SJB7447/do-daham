@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-black: "Black Han Sans", sans-serif;
+  --font-doodle: "Nanum Pen Script", cursive;
+  --font-sans: "Noto Sans KR", sans-serif;
+  
+  --color-neon-pink: #FF0055;
+  --color-neon-green: #00FF66;
+  --color-electric-blue: #0033FF;
+  --color-vivid-yellow: #FFEA00;
+  --color-bg-dark: #111111;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-neon-pink);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-vivid-yellow);
+}
+
+/* Scrapbook Masking Tape Effect */
+.masking-tape {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-4deg);
+  width: 120px;
+  height: 35px;
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 20;
+  border-left: 2px dashed rgba(0,0,0,0.1);
+  border-right: 2px dashed rgba(0,0,0,0.1);
+}
+
+/* Torn Paper Effect */
+.torn-paper {
+  clip-path: polygon(2% 0%, 98% 2%, 100% 98%, 0% 100%);
+}
+
+/* Stamp Effect */
+.stamp-done {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-20deg);
+  border: 6px solid var(--color-neon-pink);
+  color: var(--color-neon-pink);
+  font-family: var(--font-black);
+  font-size: 3rem;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 30;
+  background: rgba(17, 17, 17, 0.8);
+  box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
+}
+
+.spray-bg {
+  background-image: radial-gradient(circle, var(--color-neon-green) 0%, transparent 60%);
+  opacity: 0.15;
+  filter: blur(40px);
+}
