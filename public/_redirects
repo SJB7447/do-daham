@@ -1,7 +1,0 @@
-# Cloudflare Pages 최상단 _redirects 파일
-
-# MechFlow (카페 장비 AI)
-/cafe/* https://mech-flow-main.vercel.app/cafe/:splat 200
-
-# Mood Brew (사용자 서비스) - 위와 동일한 원리 적용
-/mood/* https://moodbrew.onrender.com/mood/:splat 200
