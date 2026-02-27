@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { ArrowRight, Zap, Skull, Youtube } from 'lucide-react';
+import mCubeLogo from './assets/m_cube_logo.png';
 
 export default function App() {
   return (
@@ -93,7 +94,7 @@ export default function App() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
-              { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: true, icon: Youtube },
+              { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: mCubeLogo, external: true, icon: Youtube },
               { id: 2, title: "Chaos Control", href: "#", img: "https://picsum.photos/seed/rebel2/800/600?grayscale", icon: Zap },
               { id: 3, title: "No Limits", href: "#", img: "https://picsum.photos/seed/rebel3/800/600?grayscale", icon: Zap },
               { id: 4, title: "Pure Freedom", href: "#", img: "https://picsum.photos/seed/rebel4/800/600?grayscale", icon: Zap }
