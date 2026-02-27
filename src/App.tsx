@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowRight, Zap, Skull } from 'lucide-react';
+import { ArrowRight, Zap, Skull, Youtube } from 'lucide-react';
 
 export default function App() {
   return (
@@ -17,7 +17,7 @@ export default function App() {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 md:px-6 min-h-screen flex flex-col justify-center relative">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
@@ -28,7 +28,7 @@ export default function App() {
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mt-12">
             <p className="text-xl md:text-3xl font-bold max-w-2xl leading-tight">
-              WE DON'T FOLLOW RULES. WE BREAK THEM.<br/>
+              WE DON'T FOLLOW RULES. WE BREAK THEM.<br />
               우리는 규칙을 따르지 않는다. 부술 뿐.
             </p>
             <button className="bg-[#ccff00] text-black font-display text-2xl px-8 py-4 uppercase hover:bg-white transition-colors flex items-center gap-2 group">
@@ -41,7 +41,7 @@ export default function App() {
 
       {/* Marquee */}
       <div className="border-y border-[#f4f4f0]/20 bg-[#ccff00] text-black py-4 overflow-hidden flex whitespace-nowrap">
-        <motion.div 
+        <motion.div
           animate={{ x: ["0%", "-50%"] }}
           transition={{ repeat: Infinity, ease: "linear", duration: 10 }}
           className="font-display text-4xl tracking-widest uppercase flex gap-8"
@@ -90,30 +90,48 @@ export default function App() {
             <h2 className="font-display text-6xl md:text-8xl">ACTIONS</h2>
             <div className="font-display text-8xl text-[#f4f4f0]/20 hidden md:block">02</div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
-              { id: 1, title: "Rule Breaking", img: "https://picsum.photos/seed/rebel1/800/600?grayscale" },
-              { id: 2, title: "Chaos Control", img: "https://picsum.photos/seed/rebel2/800/600?grayscale" },
-              { id: 3, title: "No Limits", img: "https://picsum.photos/seed/rebel3/800/600?grayscale" },
-              { id: 4, title: "Pure Freedom", img: "https://picsum.photos/seed/rebel4/800/600?grayscale" }
-            ].map((item) => (
-              <div key={item.id} className="group cursor-pointer">
-                <div className="aspect-[4/3] bg-[#1a1a1a] border border-[#f4f4f0]/20 overflow-hidden relative mb-6">
-                  <img 
-                    src={item.img} 
-                    alt={item.title} 
-                    className="w-full h-full object-cover mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-[#ccff00]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: true, icon: Youtube },
+              { id: 2, title: "Chaos Control", href: "#", img: "https://picsum.photos/seed/rebel2/800/600?grayscale", icon: Zap },
+              { id: 3, title: "No Limits", href: "#", img: "https://picsum.photos/seed/rebel3/800/600?grayscale", icon: Zap },
+              { id: 4, title: "Pure Freedom", href: "#", img: "https://picsum.photos/seed/rebel4/800/600?grayscale", icon: Zap }
+            ].map((item) => {
+              const CardContent = (
+                <>
+                  <div className="aspect-[4/3] bg-[#1a1a1a] border border-[#f4f4f0]/20 overflow-hidden relative mb-6">
+                    <img
+                      src={item.img}
+                      alt={item.title}
+                      className="w-full h-full object-cover mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-[#ccff00]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  </div>
+                  <div className="flex justify-between items-center border-b border-[#f4f4f0]/20 pb-4">
+                    <h3 className="font-display text-3xl uppercase">{item.title}</h3>
+                    <item.icon className="text-[#ccff00] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </>
+              );
+
+              return item.href ? (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target={item.external ? "_blank" : "_self"}
+                  rel={item.external ? "noopener noreferrer" : ""}
+                  className="group cursor-pointer block"
+                >
+                  {CardContent}
+                </a>
+              ) : (
+                <div key={item.id} className="group cursor-pointer">
+                  {CardContent}
                 </div>
-                <div className="flex justify-between items-center border-b border-[#f4f4f0]/20 pb-4">
-                  <h3 className="font-display text-3xl uppercase">{item.title}</h3>
-                  <Zap className="text-[#ccff00] opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
