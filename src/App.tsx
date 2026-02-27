@@ -166,31 +166,37 @@ export default function App() {
             {/* Scrapbook Item 1 : Mood Brew */}
             <motion.a
               href="/mood"
-              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl rotate-3 block cursor-pointer"
+              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl rotate-3 block cursor-pointer transition-colors duration-300 dark:bg-[#fdfbf7]"
               whileHover={{ rotate: [0, -5, 5, -5, 0], scale: 1.05 }}
               transition={{ duration: 0.4 }}
             >
               <div className="masking-tape"></div>
               {/* 커피나 감성적인 카페 이미지로 교체하면 좋습니다 */}
-              <img src="https://picsum.photos/seed/coffee/400/400" alt="Mood Brew" className="w-full h-64 object-cover filter contrast-125 saturate-150" referrerPolicy="no-referrer" />
-              <p className="absolute bottom-4 left-0 w-full text-center font-['Nanum_Pen_Script'] text-4xl text-black font-bold">
-                #Mood_Brew ☕️
-              </p>
+              <img src="https://picsum.photos/seed/coffee/400/400" alt="Mood Brew" className="w-full aspect-square object-cover" referrerPolicy="no-referrer" />
+              <div className="absolute bottom-0 left-0 w-full h-16 flex items-center justify-center gap-2">
+                <p className="font-['Nanum_Pen_Script'] text-5xl text-black font-bold tracking-wider">
+                  #Mood_Brew
+                </p>
+                <span className="text-3xl">☕️</span>
+              </div>
             </motion.a>
 
             {/* Scrapbook Item 2 : MechFlow */}
             <motion.a
               href="/cafe"
-              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl -rotate-6 mt-10 md:mt-20 block cursor-pointer"
+              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl -rotate-6 mt-10 md:mt-20 block cursor-pointer transition-colors duration-300 dark:bg-[#fdfbf7]"
               whileHover={{ rotate: [0, 5, -5, 5, 0], scale: 1.05 }}
               transition={{ duration: 0.4 }}
             >
               <div className="masking-tape" style={{ transform: 'translateX(-50%) rotate(5deg)' }}></div>
               {/* 커피 머신이나 테크놀로지 느낌의 이미지로 교체하면 좋습니다 */}
-              <img src="https://picsum.photos/seed/machine/400/400" alt="MechFlow" className="w-full h-64 object-cover filter contrast-125 saturate-150" referrerPolicy="no-referrer" />
-              <p className="absolute bottom-4 left-0 w-full text-center font-['Nanum_Pen_Script'] text-4xl text-black font-bold">
-                #MechFlow ⚙️
-              </p>
+              <img src="https://picsum.photos/seed/machine/400/400" alt="MechFlow" className="w-full aspect-square object-cover" referrerPolicy="no-referrer" />
+              <div className="absolute bottom-0 left-0 w-full h-16 flex items-center justify-center gap-2">
+                <p className="font-['Nanum_Pen_Script'] text-5xl text-black font-bold tracking-wider">
+                  #MechFlow
+                </p>
+                <span className="text-3xl">⚙️</span>
+              </div>
             </motion.a>
 
             {/* Scrapbook Item 3 : YouTube Channels */}
@@ -198,16 +204,19 @@ export default function App() {
               href="https://www.youtube.com/@CodeM_Studio_AI11"
               target="_blank"
               rel="noopener noreferrer"
-              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl rotate-6 mt-5 md:mt-10 block cursor-pointer"
+              className="relative w-72 md:w-80 bg-white p-4 pb-16 shadow-2xl rotate-6 mt-5 md:mt-10 block cursor-pointer transition-colors duration-300 dark:bg-[#fdfbf7]"
               whileHover={{ rotate: [0, -5, 5, -5, 0], scale: 1.05 }}
               transition={{ duration: 0.4 }}
             >
               <div className="masking-tape" style={{ transform: 'translateX(-50%) rotate(-2deg)' }}></div>
               {/* Code_M Studio나 SimSimHey 채널의 대표 썸네일로 교체하면 좋습니다 */}
-              <img src="https://picsum.photos/seed/youtube/400/400" alt="YouTube Creators" className="w-full h-64 object-cover filter contrast-125 saturate-150" referrerPolicy="no-referrer" />
-              <p className="absolute bottom-4 left-0 w-full text-center font-['Nanum_Pen_Script'] text-4xl text-black font-bold">
-                #크리에이터_ON 🎬
-              </p>
+              <img src="https://picsum.photos/seed/youtube/400/400" alt="YouTube Creators" className="w-full aspect-square object-cover" referrerPolicy="no-referrer" />
+              <div className="absolute bottom-0 left-0 w-full h-16 flex items-center justify-center gap-2">
+                <p className="font-['Nanum_Pen_Script'] text-5xl text-black font-bold tracking-wider">
+                  #크리에이터_ON
+                </p>
+                <span className="text-3xl">🎬</span>
+              </div>
             </motion.a>
           </div>
         </div>

@@ -5,13 +5,14 @@
   --font-black: "Black Han Sans", sans-serif;
   --font-doodle: "Nanum Pen Script", cursive;
   --font-sans: "Noto Sans KR", sans-serif;
-  
+
   /* Map Tailwind colors to CSS vars */
   --color-neon-pink: var(--color-neon-pink);
   --color-neon-green: var(--color-neon-green);
   --color-electric-blue: var(--color-electric-blue);
   --color-vivid-yellow: var(--color-vivid-yellow);
-  --color-bg-dark: var(--color-bg-dark); /* Keep for the explicit dark hero section */
+  --color-bg-dark: var(--color-bg-dark);
+  /* Keep for the explicit dark hero section */
   --color-bg-primary: var(--color-bg-primary);
   --color-bg-secondary: var(--color-bg-secondary);
 }
@@ -22,7 +23,7 @@
   --color-electric-blue: #0033FF;
   --color-vivid-yellow: #FFCC00;
   --color-bg-dark: #111111;
-  
+
   --color-bg-primary: #f8f9fa;
   --color-text-primary: #111111;
   --color-bg-secondary: #e9ecef;
@@ -52,13 +53,16 @@ body {
 ::-webkit-scrollbar {
   width: 12px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--color-bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-neon-pink);
   border-radius: 0px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-vivid-yellow);
 }
@@ -68,21 +72,18 @@ body {
   position: absolute;
   top: -15px;
   left: 50%;
-  transform: translateX(-50%) rotate(-4deg);
-  width: 120px;
-  height: 35px;
-  background-color: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transform: translateX(-50%) rotate(-2deg);
+  width: 140px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 20;
-  border-left: 2px dashed rgba(0,0,0,0.1);
-  border-right: 2px dashed rgba(0,0,0,0.1);
+  /* Zagged edge effect to simulate torn tape */
+  clip-path: polygon(0% 5%, 5% 0%, 10% 5%, 15% 0%, 20% 5%, 25% 0%, 30% 5%, 35% 0%, 40% 5%, 45% 0%, 50% 5%, 55% 0%, 60% 5%, 65% 0%, 70% 5%, 75% 0%, 80% 5%, 85% 0%, 90% 5%, 95% 0%, 100% 5%, 100% 95%, 95% 100%, 90% 95%, 85% 100%, 80% 95%, 75% 100%, 70% 95%, 65% 100%, 60% 95%, 55% 100%, 50% 95%, 45% 100%, 40% 95%, 35% 100%, 30% 95%, 25% 100%, 20% 95%, 15% 100%, 10% 95%, 5% 100%, 0% 95%);
 }
 
 .dark .masking-tape {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-left: 2px dashed rgba(255,255,255,0.2);
-  border-right: 2px dashed rgba(255,255,255,0.2);
+  background-color: rgba(255, 255, 255, 0.75);
 }
 
 /* Torn Paper Effect */
