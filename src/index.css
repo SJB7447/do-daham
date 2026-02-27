@@ -1,117 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Black+Han+Sans&family=Inter:wght@400;700;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-black: "Black Han Sans", sans-serif;
-  --font-doodle: "Nanum Pen Script", cursive;
-  --font-sans: "Noto Sans KR", sans-serif;
-
-  /* Map Tailwind colors to CSS vars */
-  --color-neon-pink: var(--color-neon-pink);
-  --color-neon-green: var(--color-neon-green);
-  --color-electric-blue: var(--color-electric-blue);
-  --color-vivid-yellow: var(--color-vivid-yellow);
-  --color-bg-dark: var(--color-bg-dark);
-  /* Keep for the explicit dark hero section */
-  --color-bg-primary: var(--color-bg-primary);
-  --color-bg-secondary: var(--color-bg-secondary);
-}
-
-:root {
-  --color-neon-pink: #FF0055;
-  --color-neon-green: #00BA4A;
-  --color-electric-blue: #0033FF;
-  --color-vivid-yellow: #FFCC00;
-  --color-bg-dark: #111111;
-
-  --color-bg-primary: #f8f9fa;
-  --color-text-primary: #111111;
-  --color-bg-secondary: #e9ecef;
-}
-
-.dark {
-  --color-neon-pink: #FF0055;
-  --color-neon-green: #00FF66;
-  --color-electric-blue: #0033FF;
-  --color-vivid-yellow: #FFEA00;
-
-  --color-bg-primary: #111111;
-  --color-text-primary: #ffffff;
-  --color-bg-secondary: #222222;
+  --font-sans: "Inter", "Noto Sans KR", sans-serif;
+  --font-display: "Anton", "Black Han Sans", sans-serif;
 }
 
 body {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-neon-pink);
-  border-radius: 0px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-vivid-yellow);
-}
-
-/* Scrapbook Masking Tape Effect */
-.masking-tape {
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%) rotate(-2deg);
-  width: 140px;
-  height: 40px;
-  background-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 20;
-  /* Zagged edge effect to simulate torn tape */
-  clip-path: polygon(0% 5%, 5% 0%, 10% 5%, 15% 0%, 20% 5%, 25% 0%, 30% 5%, 35% 0%, 40% 5%, 45% 0%, 50% 5%, 55% 0%, 60% 5%, 65% 0%, 70% 5%, 75% 0%, 80% 5%, 85% 0%, 90% 5%, 95% 0%, 100% 5%, 100% 95%, 95% 100%, 90% 95%, 85% 100%, 80% 95%, 75% 100%, 70% 95%, 65% 100%, 60% 95%, 55% 100%, 50% 95%, 45% 100%, 40% 95%, 35% 100%, 30% 95%, 25% 100%, 20% 95%, 15% 100%, 10% 95%, 5% 100%, 0% 95%);
-}
-
-.dark .masking-tape {
-  background-color: rgba(255, 255, 255, 0.75);
-}
-
-/* Torn Paper Effect */
-.torn-paper {
-  clip-path: polygon(2% 0%, 98% 2%, 100% 98%, 0% 100%);
-}
-
-/* Stamp Effect */
-.stamp-done {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-20deg);
-  border: 6px solid var(--color-neon-pink);
-  color: var(--color-neon-pink);
-  font-family: var(--font-black);
-  font-size: 3rem;
-  padding: 0.5rem 1.5rem;
-  border-radius: 0.5rem;
-  text-transform: uppercase;
-  pointer-events: none;
-  z-index: 30;
-  background: var(--color-bg-primary);
-  box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
-}
-
-.spray-bg {
-  background-image: radial-gradient(circle, var(--color-neon-green) 0%, transparent 60%);
-  opacity: 0.15;
-  filter: blur(40px);
+  background-color: #050505;
+  color: #f4f4f0;
 }
