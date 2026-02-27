@@ -24,12 +24,10 @@ export default defineConfig(({ mode }) => {
         '^/mood(/.*)?': {
           target: 'https://moodbrew.onrender.com',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/mood/, '') || '/',
         },
         '^/cafe(/.*)?': {
           target: 'https://mech-flow-main.vercel.app',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/cafe/, '') || '/',
         },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

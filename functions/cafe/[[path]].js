@@ -7,11 +7,6 @@ export async function onRequest(context) {
     url.protocol = "https:";
     url.port = "";
 
-    // Remove the /cafe prefix from the path
-    // E.g., /cafe/api/users -> /api/users
-    // /cafe -> /
-    url.pathname = url.pathname.replace(/^\/cafe/, '') || '/';
-
     // Create a new request object with the updated URL
     const proxyRequest = new Request(url.toString(), request);
 
