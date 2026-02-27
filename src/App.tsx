@@ -96,7 +96,7 @@ export default function App() {
             {[
               { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: mCubeLogo, external: true, icon: Youtube },
               { id: 2, title: "Mood Brew", href: "/mood", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", icon: Coffee },
-              { id: 3, title: "MechFlow", href: "/cafe", img: "https://images.unsplash.com/photo-1587314168485-3236d6710814?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", icon: Cpu },
+              { id: 3, title: "MechFlow", href: "/cafe", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", icon: Cpu },
               { id: 4, title: "Pure Freedom", href: "#", img: "https://picsum.photos/seed/rebel4/800/600?grayscale", icon: Zap }
             ].map((item) => {
               const CardContent = (
