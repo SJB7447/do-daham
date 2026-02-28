@@ -25,8 +25,9 @@ export default function App() {
           className="max-w-7xl mx-auto w-full"
         >
           <div className="font-display leading-[0.85] tracking-tighter uppercase mb-6 text-[#ccff00] flex flex-col whitespace-nowrap">
-            <div className="text-[19.5vw] lg:text-[min(19.5vw,225px)] xl:text-[230px]">하고싶은거</div>
-            <div className="text-[32vw] lg:text-[min(32vw,370px)] xl:text-[380px]">다함.</div>
+            <div className="text-[47.5vw] md:text-[min(47.5vw,550px)]">하고</div>
+            <div className="text-[31.5vw] md:text-[min(31.5vw,366px)]">싶은거</div>
+            <div className="text-[31.5vw] md:text-[min(31.5vw,366px)]">다함.</div>
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mt-12">
             <p className="text-xl md:text-3xl font-bold max-w-2xl leading-tight">
