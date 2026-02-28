@@ -26,14 +26,14 @@ export default function App() {
         >
           <div className="font-display leading-[0.85] tracking-tighter uppercase mb-6 text-[#ccff00] flex flex-col whitespace-nowrap">
             {/* Mobile (3 lines) */}
-            <div className="block md:hidden text-[20vw] opacity-90 mt-2">하고</div>
-            <div className="block md:hidden text-[20vw] opacity-90">싶은거</div>
+            <div className="block md:hidden text-[31.5vw]">하고</div>
+            <div className="block md:hidden text-[31.5vw]">싶은거</div>
 
             {/* Desktop (2 lines, 1st line) */}
             <div className="hidden md:block md:text-[19.5vw] lg:text-[min(19.5vw,225px)] xl:text-[230px]">하고싶은거</div>
 
             {/* Shared last line */}
-            <div className="text-[34vw] md:text-[32vw] lg:text-[min(32vw,370px)] xl:text-[380px] -mt-2 md:mt-0">다함.</div>
+            <div className="text-[47.5vw] md:text-[32vw] lg:text-[min(32vw,370px)] xl:text-[380px]">다함.</div>
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mt-12">
             <p className="text-xl md:text-3xl font-bold max-w-2xl leading-tight">
