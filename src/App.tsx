@@ -24,7 +24,7 @@ export default function App() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="max-w-7xl mx-auto w-full"
         >
-          <div className="font-display text-[20vw] md:text-[15vw] leading-[0.85] tracking-tight uppercase mb-6 text-[#ccff00] break-keep">
+          <div className="font-display text-[27vw] md:text-[15vw] leading-[0.85] tracking-tight uppercase mb-6 text-[#ccff00] break-keep whitespace-nowrap">
             하고싶은거<br />다함.
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mt-12">
