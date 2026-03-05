@@ -24,7 +24,7 @@ export default function App() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="max-w-7xl mx-auto w-full"
         >
-          <div className="font-display leading-[0.85] tracking-tighter uppercase mb-6 text-[#ccff00] flex flex-col whitespace-nowrap">
+          <div className="font-sans font-black leading-[1.1] tracking-tight uppercase mb-6 text-[#ccff00] flex flex-col whitespace-nowrap">
             {/* Mobile (3 lines) */}
             <div className="block md:hidden text-[31.5vw]">하고</div>
             <div className="block md:hidden text-[31.5vw]">싶은거</div>
@@ -86,7 +86,7 @@ export default function App() {
               <p>눈치 보지 마.</p>
               <p>허락 구하지 마.</p>
               <p>그냥 해.</p>
-              <p className="text-[#ccff00] font-display text-5xl md:text-7xl mt-12">하고싶은거 다해.</p>
+              <p className="text-[#ccff00] font-sans font-black tracking-tight text-5xl md:text-7xl mt-12">하고싶은거 다해.</p>
             </div>
           </div>
         </div>

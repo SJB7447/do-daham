@@ -1,12 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Black+Han+Sans&family=Inter:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+KR:wght@400;700;900&family=Inter:wght@400;700;900&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", "Noto Sans KR", sans-serif;
-  --font-display: "Anton", "Black Han Sans", sans-serif;
+  --font-display: "Anton", "Noto Sans KR", sans-serif;
 }
 
 body {
   background-color: #050505;
   color: #f4f4f0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
