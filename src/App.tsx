@@ -11,6 +11,7 @@ export default function App() {
           <div className="font-display text-2xl tracking-wider uppercase text-[#ccff00]">Do Daham</div>
           <div className="flex gap-6 text-sm font-bold tracking-widest uppercase">
             <a href="#manifesto" className="hover:text-[#ccff00] transition-colors">Manifesto</a>
+            <a href="#masterpiece" className="hover:text-[#ccff00] transition-colors">Masterpiece</a>
             <a href="#actions" className="hover:text-[#ccff00] transition-colors">Actions</a>
           </div>
         </div>
@@ -92,12 +93,45 @@ export default function App() {
         </div>
       </section>
 
+      {/* Masterpiece / Video */}
+      <section id="masterpiece" className="py-32 px-4 md:px-6 border-b border-[#f4f4f0]/20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+          <div className="md:col-span-4 flex flex-col justify-center h-full">
+            <div className="font-display text-8xl text-[#f4f4f0]/20 mb-8">
+              02
+            </div>
+            <h2 className="font-display text-5xl md:text-7xl mb-6 text-[#ccff00] uppercase break-keep">
+              REPRESENTATIVE<br/>WORK
+            </h2>
+            <div className="space-y-4 text-xl md:text-2xl font-bold leading-snug break-keep opacity-90">
+              <p>경기관광공사 영상 공모전 입상작</p>
+              <p className="text-sm md:text-base text-[#f4f4f0]/60 font-sans font-normal mt-2">
+                "Code:M Studio"가 제작한 경기도의 새로운 매력.
+              </p>
+            </div>
+          </div>
+          <div className="md:col-span-8">
+            <div className="aspect-video w-full bg-[#1a1a1a] border border-[#f4f4f0]/20 relative group overflow-hidden shadow-[0_0_30px_rgba(204,255,0,0.05)]">
+               {/* Embed YouTube Video */}
+               <iframe
+                 className="absolute top-0 left-0 w-full h-full grayscale-[50%] group-hover:grayscale-0 opacity-80 group-hover:opacity-100 transition-all duration-700"
+                 src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
+                 title="경기관광공사 공모전 입상작 - Code:M Studio"
+                 frameBorder="0"
+                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                 allowFullScreen
+               ></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Actions / Grid */}
       <section id="actions" className="py-32 px-4 md:px-6 border-b border-[#f4f4f0]/20">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-end mb-16">
             <h2 className="font-display text-6xl md:text-8xl">ACTIONS</h2>
-            <div className="font-display text-8xl text-[#f4f4f0]/20 hidden md:block">02</div>
+            <div className="font-display text-8xl text-[#f4f4f0]/20 hidden md:block">03</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
