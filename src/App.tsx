@@ -147,7 +147,7 @@ export default function App() {
                     <img
                       src={item.img}
                       alt={item.title}
-                      className="w-full h-full object-cover mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500"
+                      className={`w-full h-full mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500 ${item.id === 1 ? 'object-contain p-8' : 'object-cover'}`}
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-[#ccff00]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
