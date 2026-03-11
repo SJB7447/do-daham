@@ -143,11 +143,11 @@ export default function App() {
             ].map((item) => {
               const CardContent = (
                 <>
-                  <div className="aspect-[4/3] bg-[#1a1a1a] border border-[#f4f4f0]/20 overflow-hidden relative mb-6">
+                  <div className={`aspect-[4/3] ${item.id === 1 ? 'bg-black' : 'bg-[#1a1a1a]'} border border-[#f4f4f0]/20 overflow-hidden relative mb-6`}>
                     <img
                       src={item.img}
                       alt={item.title}
-                      className={`w-full h-full mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500 ${item.id === 1 ? 'object-contain p-8' : 'object-cover'}`}
+                      className={`w-full h-full mix-blend-luminosity group-hover:scale-105 group-hover:mix-blend-normal transition-all duration-500 ${item.id === 1 ? 'object-contain' : 'object-cover'}`}
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-[#ccff00]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
