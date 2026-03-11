@@ -101,7 +101,7 @@ export default function App() {
               02
             </div>
             <h2 className="font-display text-5xl md:text-7xl mb-6 text-[#ccff00] uppercase break-keep">
-              REPRESENTATIVE<br/>WORK
+              REPRESENTATIVE<br />WORK
             </h2>
             <div className="space-y-4 text-xl md:text-2xl font-bold leading-snug break-keep opacity-90">
               <p>경기관광공사 영상 공모전 입상작</p>
@@ -112,15 +112,15 @@ export default function App() {
           </div>
           <div className="md:col-span-8">
             <div className="aspect-video w-full bg-[#1a1a1a] border border-[#f4f4f0]/20 relative group overflow-hidden shadow-[0_0_30px_rgba(204,255,0,0.05)]">
-               {/* Embed YouTube Video */}
-               <iframe
-                 className="absolute top-0 left-0 w-full h-full grayscale-[50%] group-hover:grayscale-0 opacity-80 group-hover:opacity-100 transition-all duration-700"
-                 src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
-                 title="경기관광공사 공모전 입상작 - Code:M Studio"
-                 frameBorder="0"
-                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                 allowFullScreen
-               ></iframe>
+              {/* Embed YouTube Video */}
+              <iframe
+                className="absolute top-0 left-0 w-full h-full grayscale-[50%] group-hover:grayscale-0 opacity-80 group-hover:opacity-100 transition-all duration-700"
+                src="https://www.youtube.com/embed/P-b7WV-obKs"
+                title="경기관광공사 공모전 입상작 - Code:M Studio"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
             </div>
           </div>
         </div>
