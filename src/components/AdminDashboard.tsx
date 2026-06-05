@@ -13,6 +13,7 @@ import {
   ArrowLeft, LogOut, Save, Plus, Trash2, ArrowUp, ArrowDown, 
   Image as ImageIcon, Youtube, Link as LinkIcon, Cpu, Loader, AlertTriangle
 } from 'lucide-react';
+import { isYoutubeUrl, getYoutubeEmbedUrl } from '../lib/youtube';
 
 interface Project {
   id: number;
@@ -316,11 +317,16 @@ export default function AdminDashboard() {
           title: portfolioData.masterpiece.title,
           descriptionTitle: portfolioData.masterpiece.descriptionTitle,
           descriptionSub: portfolioData.masterpiece.descriptionSub,
-          embedSrc: portfolioData.masterpiece.embedSrc
+          embedSrc: isYoutubeUrl(portfolioData.masterpiece.embedSrc)
+            ? getYoutubeEmbedUrl(portfolioData.masterpiece.embedSrc)
+            : portfolioData.masterpiece.embedSrc
         },
         actions: portfolioData.actions.map(a => ({
           ...a,
-          external: a.href.startsWith('http')
+          videoSrc: a.mediaType === 'youtube' && a.videoSrc
+            ? getYoutubeEmbedUrl(a.videoSrc)
+            : (a.videoSrc || ''),
+          external: a.href ? a.href.startsWith('http') : false
         }))
       };
 
@@ -620,10 +626,10 @@ export default function AdminDashboard() {
                 {portfolioData.masterpiece.embedSrc && (
                   <div className="mt-6 p-4 bg-black/40 border border-[#f4f4f0]/15 inline-block">
                     <p className="text-[10px] font-bold text-[#ccff00] uppercase tracking-wider mb-2">Media Preview</p>
-                    {portfolioData.masterpiece.embedSrc.includes('youtube') ? (
+                    {isYoutubeUrl(portfolioData.masterpiece.embedSrc) ? (
                       <div className="w-[180px] aspect-video">
                         <iframe 
-                          src={portfolioData.masterpiece.embedSrc} 
+                          src={getYoutubeEmbedUrl(portfolioData.masterpiece.embedSrc)} 
                           title="Preview" 
                           className="w-full h-full object-cover" 
                           frameBorder="0" 

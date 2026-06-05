@@ -5,6 +5,7 @@ import { db } from './lib/firebase';
 import AdminDashboard from './components/AdminDashboard';
 import { Settings } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
+import { isYoutubeUrl, getYoutubeEmbedUrl } from './lib/youtube';
 
 // ═══ CRYSTAL CUBE SVG GENERATOR COMPONENT ═══
 function CrystalCube({ size, pfx }: { size: number; pfx: string }) {
@@ -134,7 +135,7 @@ function PortfolioHome() {
             },
             masterpiece: {
               title: parsed.masterpiece?.title || "REPRESENTATIVE\nWORK",
-              descriptionTitle: parsed.masterpiece?.descriptionTitle || "등록된 작품이 없습니다.",
+              descriptionTitle: parsed.masterpiece?.descriptionTitle || (parsed.masterpiece?.embedSrc ? "SELECTED WORK" : "등록된 작품이 없습니다."),
               descriptionSub: parsed.masterpiece?.descriptionSub || "",
               embedSrc: parsed.masterpiece?.embedSrc || ""
             },
@@ -235,15 +236,15 @@ function PortfolioHome() {
       <section className="section" id="masterpiece" data-screen-label="Masterpiece">
         <div className="sec-head">
           <span className="sec-num">02</span>
-          <span className="sec-title">MASTERPIECE</span>
+          <span className="sec-title whitespace-pre-line">{data.masterpiece.title || "MASTERPIECE"}</span>
         </div>
         <div className="masterpiece-inner">
           <div className="video-block">
             {data.masterpiece.embedSrc ? (
-              data.masterpiece.embedSrc.includes('youtube') ? (
+              isYoutubeUrl(data.masterpiece.embedSrc) ? (
                 <iframe
                   className="absolute top-0 left-0 w-full h-full border-0"
-                  src={data.masterpiece.embedSrc}
+                  src={getYoutubeEmbedUrl(data.masterpiece.embedSrc)}
                   title={data.masterpiece.descriptionTitle}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -290,7 +291,7 @@ function PortfolioHome() {
                   <>
                     <iframe
                       className="absolute inset-0 w-full h-full border-0 opacity-35 group-hover:opacity-70 transition-opacity duration-700 pointer-events-auto"
-                      src={item.videoSrc}
+                      src={getYoutubeEmbedUrl(item.videoSrc)}
                       title={item.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
