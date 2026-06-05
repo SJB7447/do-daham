@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import AdminDashboard from './components/AdminDashboard';
 import { Settings } from 'lucide-react';
+import mCubeLogo from './assets/m_cube_logo.png';
 
 // ═══ CRYSTAL CUBE SVG GENERATOR COMPONENT ═══
 function CrystalCube({ size, pfx }: { size: number; pfx: string }) {
@@ -95,7 +96,7 @@ function PortfolioHome() {
       embedSrc: "https://www.youtube.com/embed/P-b7WV-obKs"
     },
     actions: [
-      { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: "", external: true },
+      { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: mCubeLogo, external: true },
       { id: 2, title: "Mood Brew", href: "https://cafe.do-daham.com/mood/", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
       { id: 3, title: "MechFlow", href: "https://machine.do-daham.com", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
       { id: 4, title: "Coming Soon...", href: "", img: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false }
@@ -279,12 +280,24 @@ function PortfolioHome() {
         </div>
         <div className="actions-grid">
           {data.actions.map((item: any, idx: number) => {
-            const isComingSoon = !item.href || item.title.toLowerCase().includes('soon');
+            const isYoutubeCard = item.mediaType === 'youtube' && item.videoSrc;
+            const isComingSoon = !isYoutubeCard && (!item.href || item.title.toLowerCase().includes('soon'));
             const cardClass = `card-${(idx % 3) + 1}`;
 
             const cardInner = (
               <>
-                {item.img && (
+                {isYoutubeCard ? (
+                  <>
+                    <iframe
+                      className="absolute inset-0 w-full h-full border-0 opacity-35 group-hover:opacity-70 transition-opacity duration-700 pointer-events-auto"
+                      src={item.videoSrc}
+                      title={item.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent pointer-events-none z-0" />
+                  </>
+                ) : item.img ? (
                   <>
                     <img
                       src={item.img}
@@ -294,9 +307,11 @@ function PortfolioHome() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent pointer-events-none z-0" />
                   </>
-                )}
-                <div className="relative z-10 flex flex-col justify-end w-full h-full">
-                  <div className="card-tag">PROJECT · CLICK TO VISIT</div>
+                ) : null}
+                <div className={`relative z-10 flex flex-col justify-end w-full h-full ${isYoutubeCard ? 'pointer-events-none' : ''}`}>
+                  <div className="card-tag">
+                    {isYoutubeCard ? 'PROJECT · WATCH VIDEO' : 'PROJECT · CLICK TO VISIT'}
+                  </div>
                   <div className="card-name">{item.title}</div>
                 </div>
               </>
@@ -320,6 +335,17 @@ function PortfolioHome() {
                     <div className="card-tag">PROJECT · COMING SOON</div>
                     <div className="card-name">{item.title}</div>
                   </div>
+                </div>
+              );
+            }
+
+            if (isYoutubeCard) {
+              return (
+                <div
+                  key={item.id}
+                  className={`action-card ${cardClass} youtube-card group relative`}
+                >
+                  {cardInner}
                 </div>
               );
             }
