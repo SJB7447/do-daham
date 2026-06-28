@@ -146,6 +146,30 @@ function PortfolioHome() {
   const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
 
+  useEffect(() => {
+    const title = 'DO DAHAM';
+    const description = 'DO DAHAM';
+
+    document.title = title;
+
+    const upsertMeta = (selector: string, attrs: Record<string, string>) => {
+      let meta = document.head.querySelector<HTMLMetaElement>(selector);
+      if (!meta) {
+        meta = document.createElement('meta');
+        Object.entries(attrs).forEach(([key, value]) => meta?.setAttribute(key, value));
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', attrs.content);
+    };
+
+    upsertMeta('meta[name="description"]', { name: 'description', content: description });
+    upsertMeta('meta[property="og:title"]', { property: 'og:title', content: title });
+    upsertMeta('meta[property="og:description"]', { property: 'og:description', content: description });
+    upsertMeta('meta[property="og:url"]', { property: 'og:url', content: 'https://do-daham.com' });
+    upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: title });
+    upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: description });
+  }, []);
+
   // Monitor scroll for nav header background
   useEffect(() => {
     const handleScroll = () => {
