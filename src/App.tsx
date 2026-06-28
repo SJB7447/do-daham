@@ -12,6 +12,26 @@ function RouteScrollHandler() {
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    const upsertMeta = (selector: string, attrs: Record<string, string>) => {
+      let meta = document.head.querySelector<HTMLMetaElement>(selector);
+      if (!meta) {
+        meta = document.createElement('meta');
+        Object.entries(attrs).forEach(([key, value]) => meta?.setAttribute(key, value));
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', attrs.content);
+    };
+
+    if (pathname === '/') {
+      document.title = 'DO DAHAM';
+      upsertMeta('meta[name="description"]', { name: 'description', content: 'DO DAHAM' });
+      upsertMeta('meta[property="og:title"]', { property: 'og:title', content: 'DO DAHAM' });
+      upsertMeta('meta[property="og:description"]', { property: 'og:description', content: 'DO DAHAM' });
+      upsertMeta('meta[property="og:url"]', { property: 'og:url', content: 'https://do-daham.com' });
+      upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: 'DO DAHAM' });
+      upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: 'DO DAHAM' });
+    }
+
     if (!hash) {
       window.scrollTo({ top: 0, behavior: 'auto' });
       return;
