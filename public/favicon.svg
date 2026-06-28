@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280">
+  <defs>
+    <linearGradient id="t1" x1="140" y1="30" x2="240" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF000"/>
+      <stop offset="100%" stop-color="#C6FF00"/>
+    </linearGradient>
+    <linearGradient id="t2" x1="240" y1="88" x2="140" y2="145" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF8A00"/>
+      <stop offset="100%" stop-color="#E02898"/>
+    </linearGradient>
+    <linearGradient id="t3" x1="140" y1="145" x2="40" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D020A0"/>
+      <stop offset="100%" stop-color="#8028D8"/>
+    </linearGradient>
+    <linearGradient id="t4" x1="40" y1="88" x2="140" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8C38C8"/>
+      <stop offset="100%" stop-color="#D6FF00"/>
+    </linearGradient>
+    <linearGradient id="r1" x1="240" y1="88" x2="190" y2="174" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#28C8F0"/>
+      <stop offset="100%" stop-color="#18A0E0"/>
+    </linearGradient>
+    <linearGradient id="r2" x1="240" y1="202" x2="140" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#18B8D0"/>
+      <stop offset="100%" stop-color="#9ECC00"/>
+    </linearGradient>
+    <linearGradient id="r3" x1="140" y1="260" x2="190" y2="174" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B6E020"/>
+      <stop offset="100%" stop-color="#6090C0"/>
+    </linearGradient>
+    <linearGradient id="r4" x1="140" y1="145" x2="240" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5870C8"/>
+      <stop offset="100%" stop-color="#32C0E0"/>
+    </linearGradient>
+    <linearGradient id="l1" x1="40" y1="88" x2="140" y2="145" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8830D0"/>
+      <stop offset="100%" stop-color="#5028C0"/>
+    </linearGradient>
+    <linearGradient id="l2" x1="140" y1="145" x2="140" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4428C0"/>
+      <stop offset="100%" stop-color="#1860C0"/>
+    </linearGradient>
+    <linearGradient id="l3" x1="140" y1="260" x2="40" y2="202" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1870C0"/>
+      <stop offset="100%" stop-color="#28B0D0"/>
+    </linearGradient>
+    <linearGradient id="l4" x1="40" y1="202" x2="40" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#28A0C8"/>
+      <stop offset="100%" stop-color="#7030D0"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="280" rx="48" fill="#0A0A0A"/>
+  <g>
+    <polygon points="140,30 240,88 140,88" fill="url(#t1)"/>
+    <polygon points="240,88 140,145 140,88" fill="url(#t2)"/>
+    <polygon points="140,145 40,88 140,88" fill="url(#t3)"/>
+    <polygon points="40,88 140,30 140,88" fill="url(#t4)"/>
+    <polygon points="240,88 240,202 190,174" fill="url(#r1)"/>
+    <polygon points="240,202 140,260 190,174" fill="url(#r2)"/>
+    <polygon points="140,260 140,145 190,174" fill="url(#r3)"/>
+    <polygon points="140,145 240,88 190,174" fill="url(#r4)"/>
+    <polygon points="40,88 140,145 90,174" fill="url(#l1)"/>
+    <polygon points="140,145 140,260 90,174" fill="url(#l2)"/>
+    <polygon points="140,260 40,202 90,174" fill="url(#l3)"/>
+    <polygon points="40,202 40,88 90,174" fill="url(#l4)"/>
+    <polygon points="140,30 240,88 240,202 140,260 40,202 40,88" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1"/>
+    <line x1="140" y1="30" x2="140" y2="145" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>
+    <line x1="240" y1="88" x2="90" y2="174" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>
+    <line x1="40" y1="88" x2="190" y2="174" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>
+  </g>
+</svg>
