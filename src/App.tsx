@@ -1,11 +1,50 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import AdminDashboard from './components/AdminDashboard';
+import WorkshopPage from './components/WorkshopPage';
 import { Settings } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
 import { isYoutubeUrl, getYoutubeEmbedUrl } from './lib/youtube';
+
+function RouteScrollHandler() {
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+
+    let attempts = 0;
+    let timer: number | undefined;
+    const targetId = decodeURIComponent(hash.slice(1));
+
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId);
+
+      if (target) {
+        const navOffset = window.innerWidth <= 600 ? 66 : 70;
+        const top = target.getBoundingClientRect().top + window.scrollY - navOffset;
+        window.scrollTo({ top, behavior: 'smooth' });
+        return;
+      }
+
+      if (attempts < 30) {
+        attempts += 1;
+        timer = window.setTimeout(scrollToTarget, 80);
+      }
+    };
+
+    timer = window.setTimeout(scrollToTarget, 60);
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [pathname, hash]);
+
+  return null;
+}
 
 // ═══ CRYSTAL CUBE SVG GENERATOR COMPONENT ═══
 function CrystalCube({ size, pfx }: { size: number; pfx: string }) {
@@ -178,13 +217,15 @@ function PortfolioHome() {
           <span className="nav-logo-text uppercase tracking-wider">{data.userName}</span>
         </a>
         <div className="nav-links">
+          <Link to="/workshop" className="nav-workshop-link">WORKSHOP</Link>
           <a href="#manifesto">MANIFESTO</a>
           <a href="#masterpiece">MASTERPIECE</a>
           <a href="#actions">ACTIONS</a>
-          <Link to="/admin" className="flex items-center gap-1 hover:text-[#C6FF00] transition-colors text-[11px] font-bold tracking-[0.14em]">
+          <Link to="/admin">
             <Settings size={12} /> CMS
           </Link>
         </div>
+        <Link to="/workshop" className="nav-mobile-workshop">WORKSHOP</Link>
         <a href="https://www.youtube.com/@do-daham" target="_blank" rel="noopener noreferrer" className="nav-watch">WATCH →</a>
       </nav>
 
@@ -406,8 +447,10 @@ function PortfolioHome() {
 export default function App() {
   return (
     <Router>
+      <RouteScrollHandler />
       <Routes>
         <Route path="/" element={<PortfolioHome />} />
+        <Route path="/workshop" element={<WorkshopPage />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>
