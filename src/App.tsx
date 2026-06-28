@@ -283,6 +283,8 @@ function PortfolioHome() {
           {data.actions.map((item: any, idx: number) => {
             const isYoutubeCard = item.mediaType === 'youtube' && item.videoSrc;
             const isComingSoon = !isYoutubeCard && (!item.href || item.title.toLowerCase().includes('soon'));
+            const isCodeMCard = item.title?.toLowerCase().replace(/\s+/g, '').includes('codem');
+            const actionImgSrc = isCodeMCard ? mCubeLogo : item.img;
             const cardClass = `card-${(idx % 3) + 1}`;
 
             const cardInner = (
@@ -298,13 +300,19 @@ function PortfolioHome() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent pointer-events-none z-0" />
                   </>
-                ) : item.img ? (
+                ) : actionImgSrc ? (
                   <>
                     <img
-                      src={item.img}
+                      src={actionImgSrc}
                       alt={item.title}
                       className="absolute inset-0 w-full h-full object-cover opacity-25 group-hover:scale-105 group-hover:opacity-40 transition-all duration-700 mix-blend-luminosity pointer-events-none"
                       referrerPolicy="no-referrer"
+                      onError={(event) => {
+                        if (!event.currentTarget.dataset.fallbackApplied) {
+                          event.currentTarget.dataset.fallbackApplied = 'true';
+                          event.currentTarget.src = mCubeLogo;
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent pointer-events-none z-0" />
                   </>
@@ -321,13 +329,19 @@ function PortfolioHome() {
             if (isComingSoon) {
               return (
                 <div key={item.id} className="action-card card-4 dim group relative">
-                  {item.img && (
+                  {actionImgSrc && (
                     <>
                       <img
-                        src={item.img}
+                        src={actionImgSrc}
                         alt={item.title}
                         className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity pointer-events-none"
                         referrerPolicy="no-referrer"
+                        onError={(event) => {
+                          if (!event.currentTarget.dataset.fallbackApplied) {
+                            event.currentTarget.dataset.fallbackApplied = 'true';
+                            event.currentTarget.src = mCubeLogo;
+                          }
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/60 to-transparent pointer-events-none z-0" />
                     </>
