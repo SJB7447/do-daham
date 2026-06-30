@@ -45,7 +45,7 @@ const faqItems = [
   },
   {
     q: '초급 수료 후 심화 등록 시 할인이 되나요?',
-    a: '네. 초급 수료생은 심화 1기 얼리버드가 490,000원을 그대로 적용받습니다.'
+    a: '네. 초급 수료생은 심화 1기 금액에서 10% 할인된 441,000원을 적용받습니다.'
   },
   {
     q: '환불 정책이 어떻게 되나요?',
@@ -242,6 +242,7 @@ function CredentialSection() {
             <div className="workshop-badge">퓨리얼 AI 광고 공모전 입상</div>
             <ul>
               <CheckItem>AI 콘텐츠 제작 실전 경험</CheckItem>
+              <CheckItem>현장 멀티디자이너 15년 경력</CheckItem>
               <CheckItem>브랜드 메시지를 영상으로 전환하는 기획력</CheckItem>
               <CheckItem>광고 목적에 맞춘 제작 코칭</CheckItem>
             </ul>
@@ -352,7 +353,7 @@ function AdvancedCourseSection() {
     <section className="workshop-section workshop-dark">
       <div className="workshop-container workshop-course-grid workshop-course-reverse">
         <div className="workshop-course-side">
-          <PriceCard title="심화 과정" listPrice="650,000원" earlyPrice="490,000원" extra="490,000원" accent="teal" />
+          <PriceCard title="심화 과정" listPrice="650,000원" earlyPrice="490,000원" extra="441,000원" accent="teal" />
           <h3>수강 후 가져가는 것</h3>
           <ul className="workshop-check-list">
             <CheckItem>AI 영상 제작 파이프라인 완성</CheckItem>
@@ -429,7 +430,7 @@ function JourneySection() {
             <span>STEP 02</span>
             <h2>심화 수료</h2>
             <p>AI로 콘텐츠를 만들 수 있다</p>
-            <strong>490,000원 (초급 수료생 특별가)</strong>
+            <strong>441,000원 (초급 수료생 특별가)</strong>
           </article>
           <article className="is-muted">
             <span>STEP 03</span>
