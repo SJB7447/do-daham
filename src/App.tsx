@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import AdminDashboard from './components/AdminDashboard';
@@ -261,7 +261,7 @@ function PortfolioHome() {
           <span className="nav-logo-text uppercase tracking-wider">{data.userName}</span>
         </a>
         <div className="nav-links">
-          <Link to="/workshop" className="nav-workshop-link">WORKSHOP</Link>
+          {/* <Link to="/workshop" className="nav-workshop-link">WORKSHOP</Link> */}
           <a href="#manifesto">MANIFESTO</a>
           <a href="#masterpiece">MASTERPIECE</a>
           <a href="#actions">ACTIONS</a>
@@ -269,7 +269,7 @@ function PortfolioHome() {
             <Settings size={12} /> CMS
           </Link>
         </div>
-        <Link to="/workshop" className="nav-mobile-workshop">WORKSHOP</Link>
+        {/* <Link to="/workshop" className="nav-mobile-workshop">WORKSHOP</Link> */}
         <a href="https://www.youtube.com/@do-daham" target="_blank" rel="noopener noreferrer" className="nav-watch">WATCH →</a>
       </nav>
 
@@ -494,7 +494,10 @@ export default function App() {
       <RouteScrollHandler />
       <Routes>
         <Route path="/" element={<PortfolioHome />} />
-        <Route path="/workshop" element={<WorkshopPage />} />
+        {/* 워크숍 전면 수정 기간 동안 일반 사용자 접근 차단 (메인으로 리다이렉트) */}
+        <Route path="/workshop" element={<Navigate to="/" replace />} />
+        {/* 수정 및 미리보기용 경로 */}
+        <Route path="/workshop-preview" element={<WorkshopPage />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>

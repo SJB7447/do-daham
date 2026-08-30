@@ -36,20 +36,20 @@ const faqItems = [
     a: '노트북이 있으면 좋지만 없어도 됩니다. 태블릿이나 스마트폰으로도 실습이 가능합니다.'
   },
   {
-    q: '온라인으로는 안 되나요?',
-    a: '1기는 오프라인 전용으로 운영합니다. 소수정예 직접 코칭이 이 강의의 핵심이기 때문입니다.'
+    q: '온라인 및 오프라인 출강도 가능한가요?',
+    a: '네, 가능합니다. 기업, 기관, 단체, 소상공인 대상 오프라인 출강 및 온라인 라이브 클래스 모두 맞춤 일정으로 진행됩니다.'
   },
   {
     q: '초급을 안 듣고 심화만 들을 수 있나요?',
     a: '가능합니다. 단, AI 기초 활용 경험이 있으신 분께 권장합니다.'
   },
   {
-    q: '초급 수료 후 심화 등록 시 할인이 되나요?',
-    a: '네. 초급 수료생은 심화 1기 금액에서 10% 할인된 441,000원을 적용받습니다.'
+    q: '기업/기관 맞춤 출강이나 단체 교육도 가능한가요?',
+    a: '네. 기관, 기업, 협회 등 대상 및 목적에 맞추어 맞춤형 커리큘럼으로 출강을 지원합니다. [강의 문의]를 통해 남겨주시면 상담을 도와드립니다.'
   },
   {
-    q: '환불 정책이 어떻게 되나요?',
-    a: '수업 시작 3일 전까지 전액 환불, 이후 취소 시 50% 환불됩니다.'
+    q: '강의 일정과 진행 방식은 어떻게 조율하나요?',
+    a: '문의 접수 후 담당 디렉터가 카카오톡 또는 유선으로 기관/개인의 일정과 인원에 맞추어 상세히 협의해 드립니다.'
   }
 ];
 
@@ -61,7 +61,7 @@ function ApplyButton({ wide = false }: { wide?: boolean }) {
       rel="noopener noreferrer"
       className={`workshop-apply ${wide ? 'workshop-apply-wide' : ''}`}
     >
-      <span>수강 신청하기</span>
+      <span>강의 문의하기</span>
       <ArrowRight size={18} aria-hidden="true" />
     </a>
   );
@@ -278,36 +278,30 @@ function RoadmapSection() {
   );
 }
 
-function PriceCard({
+function InquiryCard({
   title,
-  listPrice,
-  earlyPrice,
-  accent,
-  extra
+  target,
+  accent
 }: {
   title: string;
-  listPrice: string;
-  earlyPrice: string;
+  target: string;
   accent: 'orange' | 'teal';
-  extra?: string;
 }) {
   return (
     <aside className={`workshop-price-card workshop-price-${accent}`}>
       <p>{title}</p>
       <div className="workshop-price-row">
-        <span>정가</span>
-        <del>{listPrice}</del>
+        <span>교육 대상</span>
+        <span>{target}</span>
       </div>
       <div className="workshop-price-row main">
-        <span>1기 얼리버드</span>
-        <strong>{earlyPrice}</strong>
+        <span>비용 안내</span>
+        <strong>출강문의</strong>
       </div>
-      {extra && (
-        <div className="workshop-price-row">
-          <span>초급 수료생 특별가</span>
-          <strong>{extra}</strong>
-        </div>
-      )}
+      <div className="workshop-price-row">
+        <span>진행 방식</span>
+        <span>맞춤 커리큘럼 & 일정 협의</span>
+      </div>
     </aside>
   );
 }
@@ -321,19 +315,19 @@ function BasicCourseSection() {
           <h2 className="workshop-section-title">AI 비즈니스 리터러시</h2>
           <p className="workshop-course-lead">AI를 처음 써보는 분도 2주 후엔 내 업무에 바로 씁니다</p>
           <div className="workshop-meta">
-            <MetaRow icon={Clock} label="기간" value="2주 | 주 1회 × 3시간" />
-            <MetaRow icon={Users} label="정원" value="최대 10명 소수정예" />
-            <MetaRow icon={MapPin} label="운영" value="신청 후 개별 안내" />
+            <MetaRow icon={Clock} label="기간" value="2주 | 주 1회 × 3시간 (맞춤 조율)" />
+            <MetaRow icon={Users} label="정원" value="소수정예 또는 단체 맞춤" />
+            <MetaRow icon={MapPin} label="운영" value="문의 후 일정 조율" />
           </div>
           <h3>이런 분께 맞습니다</h3>
           <ul className="workshop-check-list">
             <CheckItem>AI를 써보고 싶은데 어디서 시작할지 모르는 분</CheckItem>
             <CheckItem>ChatGPT를 써봤는데 원하는 결과가 안 나오는 분</CheckItem>
-            <CheckItem>내 업무나 사업에 AI를 연결하고 싶은 소상공인, 직장인</CheckItem>
+            <CheckItem>내 업무나 사업에 AI를 연결하고 싶은 소상공인, 직장인, 기업</CheckItem>
           </ul>
         </div>
         <div className="workshop-course-side">
-          <PriceCard title="초급 과정" listPrice="250,000원" earlyPrice="190,000원" accent="orange" />
+          <InquiryCard title="초급 과정" target="기업 · 기관 · 소상공인 · 직장인" accent="orange" />
           <h3>수강 후 가져가는 것</h3>
           <ul className="workshop-check-list">
             <CheckItem>내 업종 전용 ChatGPT 프롬프트 세트</CheckItem>
@@ -353,7 +347,7 @@ function AdvancedCourseSection() {
     <section className="workshop-section workshop-dark">
       <div className="workshop-container workshop-course-grid workshop-course-reverse">
         <div className="workshop-course-side">
-          <PriceCard title="심화 과정" listPrice="650,000원" earlyPrice="490,000원" extra="441,000원" accent="teal" />
+          <InquiryCard title="심화 과정" target="크리에이터 · 실무 디렉터 · 단체" accent="teal" />
           <h3>수강 후 가져가는 것</h3>
           <ul className="workshop-check-list">
             <CheckItem>AI 영상 제작 파이프라인 완성</CheckItem>
@@ -368,15 +362,15 @@ function AdvancedCourseSection() {
           <h2 className="workshop-section-title">AI 크리에이티브 디렉터</h2>
           <p className="workshop-course-lead">AI로 영상을 만들고 포트폴리오까지 완성합니다</p>
           <div className="workshop-meta">
-            <MetaRow icon={Clock} label="기간" value="4주 | 주 1회 × 3시간" />
-            <MetaRow icon={Users} label="정원" value="최대 8명 소수정예" />
-            <MetaRow icon={MapPin} label="운영" value="신청 후 개별 안내" />
+            <MetaRow icon={Clock} label="기간" value="4주 | 주 1회 × 3시간 (맞춤 조율)" />
+            <MetaRow icon={Users} label="정원" value="소수정예 또는 단체 맞춤" />
+            <MetaRow icon={MapPin} label="운영" value="문의 후 일정 조율" />
           </div>
           <h3>이런 분께 맞습니다</h3>
           <ul className="workshop-check-list">
             <CheckItem>AI로 콘텐츠를 만들어보고 싶은 분</CheckItem>
             <CheckItem>Midjourney, Kling을 써봤는데 방향을 못 잡겠는 분</CheckItem>
-            <CheckItem>AI 공모전에 도전하고 싶은 분</CheckItem>
+            <CheckItem>AI 공모전에 도전하고 싶은 분 및 사내 콘텐츠 제작팀</CheckItem>
           </ul>
         </div>
       </div>
@@ -388,7 +382,7 @@ function BenefitsSection() {
   const benefits = [
     { icon: BookOpen, title: 'AI 실전 가이드북 영구 소장', text: '수업 후에도 혼자 계속 쓸 수 있는 프롬프트 템플릿과 파이프라인 카드' },
     { icon: MessageCircle, title: '수료 후 그룹 피드백 단톡방', text: '1개월 동안 결과물 공유, 질문, 피드백을 함께 합니다' },
-    { icon: Phone, title: '개인 문의 상시 오픈', text: '카카오톡으로 언제든 질문하면 디렉터가 직접 답변드립니다' },
+    { icon: Phone, title: '개인 및 출강 문의 상시 오픈', text: '카카오톡으로 언제든 질문하면 디렉터가 직접 답변드립니다' },
     { icon: Trophy, title: 'AI 공모전 정보 우선 안내', text: '관련 공모전 일정을 수강생에게 먼저 공유합니다' },
     { icon: Rocket, title: '공모전 반 우선 참여 자격', text: '추후 개설되는 공모전 준비반에 가장 먼저 초대됩니다' }
   ];
@@ -398,7 +392,7 @@ function BenefitsSection() {
       <div className="workshop-container">
         <SectionLabel>06. BENEFITS</SectionLabel>
         <h2 className="workshop-section-title">수업이 끝나도 연결은 계속됩니다</h2>
-        <p className="workshop-section-sub">모든 기수 공통 제공</p>
+        <p className="workshop-section-sub">모든 교육 과정 공통 제공</p>
         <div className="workshop-benefit-grid">
           {benefits.map((item, index) => (
             <article key={item.title} className={index === benefits.length - 1 ? 'wide' : ''}>
@@ -422,15 +416,15 @@ function JourneySection() {
         <div className="workshop-journey">
           <article>
             <span>STEP 01</span>
-            <h2>초급 수료</h2>
+            <h2>초급 과정</h2>
             <p>내 업무에 AI를 연결했다</p>
-            <strong>190,000원 (1기)</strong>
+            <strong>출강 및 교육 문의</strong>
           </article>
           <article>
             <span>STEP 02</span>
-            <h2>심화 수료</h2>
+            <h2>심화 과정</h2>
             <p>AI로 콘텐츠를 만들 수 있다</p>
-            <strong>441,000원 (초급 수료생 특별가)</strong>
+            <strong>출강 및 교육 문의</strong>
           </article>
           <article className="is-muted">
             <span>STEP 03</span>
@@ -478,15 +472,15 @@ function CTASection() {
   return (
     <section className="workshop-final-cta">
       <div>
-        <SectionLabel tone="orange">09. APPLY NOW</SectionLabel>
-        <h2>지금 시작하세요.</h2>
-        <p>1기 얼리버드는 선착순 마감입니다.</p>
+        <SectionLabel tone="orange">09. INQUIRY NOW</SectionLabel>
+        <h2>지금 문의하세요.</h2>
+        <p>기업, 기관, 단체 출강 및 맞춤형 클래스를 지원합니다.</p>
         <div className="workshop-capacity">
-          <span>초급 · 최대 10명</span>
-          <span>심화 · 최대 8명</span>
+          <span>기관 · 기업 맞춤 출강</span>
+          <span>소수정예 오프라인 코칭</span>
         </div>
         <ApplyButton wide />
-        <small>신청 후 카카오톡으로 개별 안내드립니다</small>
+        <small>문의 접수 후 카카오톡으로 상세 일정과 상담을 안내드립니다</small>
         <footer>문의: 카카오톡 @AI다함스튜디오</footer>
       </div>
     </section>
