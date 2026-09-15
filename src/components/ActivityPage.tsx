@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, Plus, X, ExternalLink, ZoomIn, 
-  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, Lock, RefreshCw, Loader2
+  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, Lock, RefreshCw, Loader2, Quote
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -26,8 +26,9 @@ export default function ActivityPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const isAdmin = isAuthorizedAdmin(currentUser?.email);
 
-  // Lightbox Modal state
-  const [selectedPhoto, setSelectedPhoto] = useState<ActivityItem | null>(null);
+  // Editorial Detail Modal state
+  const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
+  const [activeModalImage, setActiveModalImage] = useState<string>('');
 
   // CMS Add Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -173,8 +174,8 @@ export default function ActivityPage() {
       try {
         await saveActivitiesToCloud(updated, currentUser?.email);
         setActivities(updated);
-        if (selectedPhoto?.id === id) {
-          setSelectedPhoto(null);
+        if (selectedItem?.id === id) {
+          setSelectedItem(null);
         }
       } catch (err: any) {
         alert(err.message || '삭제 도중 오류가 발생했습니다.');
@@ -358,11 +359,8 @@ export default function ActivityPage() {
                   <div 
                     className="relative aspect-[16/10] overflow-hidden bg-black cursor-pointer"
                     onClick={() => {
-                      if (isPhoto) {
-                        setSelectedPhoto(item);
-                      } else if (item.link) {
-                        window.open(item.link, '_blank', 'noopener,noreferrer');
-                      }
+                      setSelectedItem(item);
+                      setActiveModalImage(item.imageUrl);
                     }}
                   >
                     <img
@@ -388,15 +386,9 @@ export default function ActivityPage() {
 
                     {/* Hover Action Overlay */}
                     <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                      {isPhoto ? (
-                        <span className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C6FF00] text-[#0A0A0A] text-xs font-extrabold rounded-md shadow-lg">
-                          <ZoomIn size={14} /> 사진 확대보기
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 px-3.5 py-2 bg-[#28C8F0] text-[#0A0A0A] text-xs font-extrabold rounded-md shadow-lg">
-                          <ExternalLink size={14} /> 기사 원문 보기
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C6FF00] text-[#0A0A0A] text-xs font-extrabold rounded-md shadow-lg">
+                        <ZoomIn size={14} /> 상세 스토리 & 인터뷰 보기
+                      </span>
                     </div>
                   </div>
 
@@ -417,8 +409,8 @@ export default function ActivityPage() {
                       <h2 
                         className="text-base md:text-lg font-bold leading-snug tracking-tight text-white group-hover:text-[#C6FF00] transition-colors line-clamp-2 cursor-pointer"
                         onClick={() => {
-                          if (isPhoto) setSelectedPhoto(item);
-                          else if (item.link) window.open(item.link, '_blank', 'noopener,noreferrer');
+                          setSelectedItem(item);
+                          setActiveModalImage(item.imageUrl);
                         }}
                       >
                         {item.title}
@@ -458,48 +450,127 @@ export default function ActivityPage() {
         )}
       </main>
 
-      {/* ── Lightbox Modal for Photo ── */}
-      {selectedPhoto && (
+      {/* ── Editorial Detail Modal (Full Story & Student Quotes) ── */}
+      {selectedItem && (
         <div 
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
-          onClick={() => setSelectedPhoto(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+          onClick={() => setSelectedItem(null)}
         >
           <div 
-            className="relative max-w-5xl w-full bg-[#141414] border border-white/20 rounded-lg overflow-hidden flex flex-col shadow-2xl"
+            className="relative max-w-4xl w-full bg-[#141417] border border-white/20 rounded-xl overflow-hidden flex flex-col shadow-2xl my-8 max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
-              <span className="text-xs font-mono text-[#C6FF00] tracking-widest uppercase">
-                {selectedPhoto.date} · {selectedPhoto.organization}
-              </span>
+            {/* Modal Header */}
+            <div className="p-4 md:px-6 border-b border-white/10 flex items-center justify-between bg-black/40 sticky top-0 z-20 backdrop-blur-md">
+              <div className="flex items-center gap-2.5">
+                <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full ${
+                  selectedItem.category === 'photo' 
+                    ? 'bg-[#C6FF00]/15 text-[#C6FF00] border border-[#C6FF00]/30' 
+                    : 'bg-[#28C8F0]/15 text-[#28C8F0] border border-[#28C8F0]/30'
+                }`}>
+                  {selectedItem.category === 'photo' ? '강의 현장 스케치' : '언론 보도 & 인터뷰'}
+                </span>
+                <span className="text-xs font-mono text-neutral-400">
+                  {selectedItem.date} · {selectedItem.organization}
+                </span>
+              </div>
               <button 
-                onClick={() => setSelectedPhoto(null)}
+                onClick={() => setSelectedItem(null)}
                 className="p-1.5 text-neutral-400 hover:text-white rounded-md hover:bg-white/10 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="relative max-h-[70vh] bg-black flex items-center justify-center overflow-hidden">
-              <img
-                src={selectedPhoto.imageUrl}
-                alt={selectedPhoto.title}
-                className="max-h-[70vh] w-auto max-w-full object-contain"
-              />
-            </div>
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto p-6 md:p-8 space-y-6">
+              {/* Main Image */}
+              <div className="relative aspect-[16/10] bg-black rounded-lg overflow-hidden border border-white/10">
+                <img
+                  src={activeModalImage || selectedItem.imageUrl}
+                  alt={selectedItem.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-            <div className="p-6 bg-[#121215] border-t border-white/10">
-              <h3 className="text-lg font-bold text-white mb-2">{selectedPhoto.title}</h3>
-              <p className="text-sm text-neutral-400 leading-relaxed font-light">{selectedPhoto.description}</p>
-              {selectedPhoto.tags && selectedPhoto.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {selectedPhoto.tags.map((tag, idx) => (
+              {/* Sub Images Gallery if present */}
+              {selectedItem.additionalImages && selectedItem.additionalImages.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-mono text-neutral-400 mb-2 uppercase tracking-wider">
+                    현장 갤러리 (사진을 클릭하면 위 화면에 크게 표시됩니다)
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {[selectedItem.imageUrl, ...selectedItem.additionalImages].map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveModalImage(imgUrl)}
+                        className={`w-16 h-12 md:w-20 md:h-14 rounded-md overflow-hidden border transition-all cursor-pointer ${
+                          (activeModalImage || selectedItem.imageUrl) === imgUrl
+                            ? 'border-[#C6FF00] scale-105 shadow-[0_0_10px_rgba(198,255,0,0.3)]'
+                            : 'border-white/20 opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={imgUrl} alt="gallery" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Headline */}
+              <div>
+                <h2 className="text-2xl md:text-3xl font-black text-white leading-tight tracking-tight">
+                  {selectedItem.title}
+                </h2>
+                <div className="text-xs font-mono text-[#C6FF00] mt-2">
+                  진행 기관 / 매체 : {selectedItem.organization} ({selectedItem.date})
+                </div>
+              </div>
+
+              {/* Student / Press Quote Box */}
+              {selectedItem.quote && (
+                <div className="p-5 rounded-lg bg-white/[0.04] border-l-4 border-[#C6FF00] border border-white/[0.08] shadow-lg">
+                  <div className="flex items-center gap-2 mb-2 text-[#C6FF00] text-xs font-mono font-bold uppercase tracking-wider">
+                    <Quote size={15} />
+                    <span>생생한 수강생 후기 & 인터뷰 · {selectedItem.quote.speaker} {selectedItem.quote.role ? `(${selectedItem.quote.role})` : ''}</span>
+                  </div>
+                  <p className="text-sm md:text-base text-neutral-200 font-light leading-relaxed italic">
+                    {selectedItem.quote.text}
+                  </p>
+                </div>
+              )}
+
+              {/* Full Reportage Story */}
+              <div className="space-y-3.5 text-sm md:text-base text-neutral-300 leading-relaxed font-light border-t border-white/10 pt-6">
+                {(selectedItem.fullContent || selectedItem.description).split('\n\n').map((paragraph, idx) => (
+                  <p key={idx} className="leading-relaxed whitespace-pre-line">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+
+              {/* Tags & Action Link */}
+              <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-2">
+                  {selectedItem.tags && selectedItem.tags.map((tag, idx) => (
                     <span key={idx} className="text-xs font-mono text-[#C6FF00] bg-[#C6FF00]/10 border border-[#C6FF00]/20 px-2.5 py-0.5 rounded">
                       #{tag}
                     </span>
                   ))}
                 </div>
-              )}
+
+                {selectedItem.link && (
+                  <a
+                    href={selectedItem.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#28C8F0] text-black font-extrabold text-xs rounded-md hover:bg-white transition-all shadow-[0_0_15px_rgba(40,200,240,0.3)] self-start sm:self-auto"
+                  >
+                    <span>공식 기사 원문 보러가기</span>
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
