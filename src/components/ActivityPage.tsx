@@ -248,8 +248,9 @@ export default function ActivityPage() {
             <h1 className="text-4xl md:text-6xl font-black tracking-tight ff-disp uppercase">
               ACTIVITY & <span className="text-[#C6FF00]">MEDIA</span>
             </h1>
-            <p className="mt-3 text-sm md:text-base text-neutral-300 max-w-2xl leading-relaxed font-light">
-              강의실과 컨퍼런스 현장의 생생한 열기, 그리고 공신력 있는 언론 보도로 입증된 강사 DO-DAHAM의 실전 커리어 아카이브입니다.
+            <p className="mt-3 text-sm md:text-base text-neutral-300 max-w-2xl leading-relaxed font-light break-keep">
+              강의실과 컨퍼런스 현장의 생생한 열기, 그리고 공신력 있는 언론 보도로 입증된
+              <br className="hidden md:inline" /> 강사 DO-DAHAM의 실전 커리어 아카이브입니다.
             </p>
           </div>
 

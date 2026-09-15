@@ -26,11 +26,12 @@ export default function ActivityHighlightSection() {
             <span className="text-[#C6FF00] text-xs font-mono tracking-widest uppercase">
               CREDIBILITY & SOCIAL PROOF
             </span>
-            <h3 className="text-2xl md:text-3xl font-extrabold text-[#F2F2F2] mt-1 ff-disp uppercase">
+            <h3 className="text-2xl md:text-3xl font-extrabold text-[#F2F2F2] mt-1 ff-disp uppercase break-keep">
               현장에서 증명하는 커리어 & 언론 보도
             </h3>
-            <p className="text-xs md:text-sm text-[#8E8E8E] mt-2 max-w-xl">
-              책상 위 이론을 넘어 실제 교육 현장의 생생한 열기와 공신력 있는 언론 보도로 검증된 강사 DO-DAHAM의 발자취입니다.
+            <p className="text-xs md:text-sm text-[#8E8E8E] mt-2 max-w-xl leading-relaxed break-keep">
+              책상 위 이론을 넘어 실제 교육 현장의 생생한 열기와
+              <br className="hidden md:inline" /> 공신력 있는 언론 보도로 검증된 강사 DO-DAHAM의 발자취입니다.
             </p>
           </div>
 
