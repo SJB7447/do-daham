@@ -94,44 +94,13 @@ export const DEFAULT_ACTIVITIES: ActivityItem[] = [
     ],
     tags: ['고양특례시', '언론보도', 'AI디지털배움터', '시정소식지', '취재르포'],
     createdAt: 1768000000000
-  },
-  {
-    id: 'act-4',
-    category: 'photo',
-    title: '공공기관 및 교육 리더십 대상 디지털 트랜스포메이션 세미나',
-    organization: '디지털 혁신 미래 교육원',
-    date: '2025.11',
-    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    description: '급변하는 교육 환경에서 디지털 리터러시와 AI 기반 행정 효율화를 위한 방향성을 공유했습니다.',
-    tags: ['공공기관특강', 'DX리더십', '미래교육'],
-    createdAt: 1764000000000
-  },
-  {
-    id: 'act-5',
-    category: 'press',
-    title: '[칼럼] 인공지능 시대, 정답을 외우는 사람보다 질문하는 사람이 이긴다',
-    organization: '이코노믹 인사이트 칼럼',
-    date: '2025.10',
-    imageUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    link: 'https://youtube.com/@do-daham',
-    description: '기술의 발전 속에서 단순 반복 지식이 아닌 본질적 문제 해결 능력과 주도적인 실행력의 가치를 기고했습니다.',
-    tags: ['전문가칼럼', '언론기고', '인사이트'],
-    createdAt: 1762000000000
-  },
-  {
-    id: 'act-6',
-    category: 'photo',
-    title: '대학생 & 청년 혁신가를 위한 해커톤 멘토링 및 피칭 워크숍',
-    organization: '청년 창업 진흥 아카데미',
-    date: '2025.09',
-    imageUrl: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    description: '실제 문제를 정의하고 기술 기반 솔루션 프로토타입을 신속하게 완성하는 해커톤 집중 코칭을 지원했습니다.',
-    tags: ['해커톤멘토링', '워크숍', '피칭코칭'],
-    createdAt: 1760000000000
   }
 ];
 
-export const STORAGE_KEY_ACTIVITIES = 'dodaham_custom_activities_v3';
+// Legacy mock IDs to always exclude
+const MOCK_IDS = new Set(['act-1', 'act-2', 'act-3', 'act-4', 'act-5', 'act-6']);
+
+export const STORAGE_KEY_ACTIVITIES = 'dodaham_custom_activities_v4';
 
 export function getStoredActivities(): ActivityItem[] {
   try {
@@ -140,8 +109,10 @@ export function getStoredActivities(): ActivityItem[] {
     const userItems: ActivityItem[] = JSON.parse(raw);
     if (!Array.isArray(userItems)) return DEFAULT_ACTIVITIES;
     
-    const customIds = new Set(userItems.map(item => item.id));
-    const combined = [...userItems, ...DEFAULT_ACTIVITIES.filter(item => !customIds.has(item.id))];
+    // Filter out mockups and duplicates
+    const cleanUserItems = userItems.filter(item => !MOCK_IDS.has(item.id));
+    const customIds = new Set(cleanUserItems.map(item => item.id));
+    const combined = [...cleanUserItems, ...DEFAULT_ACTIVITIES.filter(item => !customIds.has(item.id))];
     return combined.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   } catch (err) {
     console.warn('Failed to load activities from localStorage:', err);
@@ -151,7 +122,8 @@ export function getStoredActivities(): ActivityItem[] {
 
 export function saveStoredActivities(activities: ActivityItem[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_ACTIVITIES, JSON.stringify(activities));
+    const cleaned = activities.filter(item => !MOCK_IDS.has(item.id));
+    localStorage.setItem(STORAGE_KEY_ACTIVITIES, JSON.stringify(cleaned));
   } catch (err) {
     console.error('Failed to save activities to localStorage:', err);
   }
@@ -168,8 +140,9 @@ export async function fetchActivitiesFromCloud(): Promise<ActivityItem[]> {
       const raw = docSnap.data().data;
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (parsed.activities && Array.isArray(parsed.activities) && parsed.activities.length > 0) {
-        saveStoredActivities(parsed.activities);
-        return parsed.activities.sort((a: ActivityItem, b: ActivityItem) => (b.createdAt || 0) - (a.createdAt || 0));
+        const cleaned = parsed.activities.filter((item: ActivityItem) => !MOCK_IDS.has(item.id));
+        saveStoredActivities(cleaned);
+        return cleaned.sort((a: ActivityItem, b: ActivityItem) => (b.createdAt || 0) - (a.createdAt || 0));
       }
     }
   } catch (err) {
