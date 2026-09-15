@@ -39,6 +39,7 @@ interface PortfolioData {
     embedSrc: string;
   };
   actions: Project[];
+  activities?: any[];
 }
 
 export default function AdminDashboard() {
@@ -110,7 +111,8 @@ export default function AdminDashboard() {
             descriptionSub: parsed.masterpiece?.descriptionSub || '',
             embedSrc: parsed.masterpiece?.embedSrc || ''
           },
-          actions: parsed.actions || []
+          actions: parsed.actions || [],
+          activities: parsed.activities || []
         });
       }
     } catch (e) {
@@ -128,6 +130,7 @@ export default function AdminDashboard() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      setPassword('');
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
@@ -143,6 +146,8 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setEmail('');
+      setPassword('');
       setPortfolioData({
         userName: '',
         userRole: '',
@@ -327,7 +332,8 @@ export default function AdminDashboard() {
             ? getYoutubeEmbedUrl(a.videoSrc)
             : (a.videoSrc || ''),
           external: a.href ? a.href.startsWith('http') : false
-        }))
+        })),
+        activities: portfolioData.activities || []
       };
 
       await setDoc(doc(db, 'portfolios', 'admin_default'), {
@@ -805,6 +811,31 @@ export default function AdminDashboard() {
                   등록된 프로젝트 카드가 없습니다. 추가해 보세요.
                 </div>
               )}
+            </div>
+
+            {/* ═══ Section 5: Activity & Media (Credentials) ═══ */}
+            <div className="border-[3px] border-[#ccff00] bg-[#0d0d0d] p-6 md:p-8 shadow-[8px_8px_0px_rgba(204,255,0,0.15)]">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                <div>
+                  <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] flex items-center gap-3">
+                    <span className="text-[#f4f4f0]/20 text-3xl font-black">05</span> Activity & Media
+                  </h2>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    강사 현장 경험 사진, 언론 보도 인터뷰 및 칼럼 기록 관리
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/activity')}
+                  className="px-5 py-3 bg-[#ccff00] text-black font-extrabold text-xs uppercase tracking-wider hover:bg-white transition-all shadow-[3px_3px_0_#fff] flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+                >
+                  <span>활동 관리 페이지 바로가기 →</span>
+                </button>
+              </div>
+              <div className="p-4 bg-black/50 border border-white/10 rounded text-xs text-neutral-300 leading-relaxed space-y-1">
+                <p>• 현재 로그인된 관리자 계정(<strong className="text-[#ccff00]">{user.email}</strong>)으로 활동 관리 페이지에서 직접 사진 등록, 기사 링크 첨부, 수정 및 삭제가 가능합니다.</p>
+                <p>• 일반 방문자에게는 등록 및 삭제 버튼이 노출되지 않으며 오직 읽기 전용으로 안전하게 제공됩니다.</p>
+              </div>
             </div>
             
             {/* ═══ Float Save Bar ═══ */}

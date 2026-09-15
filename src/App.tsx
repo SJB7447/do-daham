@@ -4,6 +4,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import AdminDashboard from './components/AdminDashboard';
 import WorkshopPage from './components/WorkshopPage';
+import ActivityPage from './components/ActivityPage';
+import ActivityHighlightSection from './components/ActivityHighlightSection';
 import { Settings } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
 import { isYoutubeUrl, getYoutubeEmbedUrl } from './lib/youtube';
@@ -265,6 +267,9 @@ function PortfolioHome() {
           <a href="#manifesto">MANIFESTO</a>
           <a href="#masterpiece">MASTERPIECE</a>
           <a href="#actions">ACTIONS</a>
+          <Link to="/activity" className="text-[#C6FF00] hover:text-white transition-colors">
+            ACTIVITY
+          </Link>
           <Link to="/admin">
             <Settings size={12} /> CMS
           </Link>
@@ -465,6 +470,9 @@ function PortfolioHome() {
         </div>
       </section>
 
+      {/* Activity & Media Highlight */}
+      <ActivityHighlightSection />
+
       {/* Footer */}
       <footer>
         <div className="footer-logo">
@@ -494,6 +502,7 @@ export default function App() {
       <RouteScrollHandler />
       <Routes>
         <Route path="/" element={<PortfolioHome />} />
+        <Route path="/activity" element={<ActivityPage />} />
         {/* 워크숍 전면 수정 기간 동안 일반 사용자 접근 차단 (메인으로 리다이렉트) */}
         <Route path="/workshop" element={<Navigate to="/" replace />} />
         {/* 수정 및 미리보기용 경로 */}
