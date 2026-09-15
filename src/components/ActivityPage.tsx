@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, Plus, X, ExternalLink, ZoomIn, 
-  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, Lock, RefreshCw, Loader2, Quote
+  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, Lock, RefreshCw, Loader2, Quote, Sparkles
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
 import { ActivityItem, ActivityCategory } from '../types/activity';
+import FaceBlurStudioModal from './FaceBlurStudioModal';
 import { 
   DEFAULT_ACTIVITIES, 
   fetchActivitiesFromCloud, 
@@ -44,6 +45,9 @@ export default function ActivityPage() {
     tags: ''
   });
   const [previewImage, setPreviewImage] = useState<string>('');
+  const [rawImage, setRawImage] = useState<string>('');
+  const [isBlurStudioOpen, setIsBlurStudioOpen] = useState(false);
+  const [isBlurredApplied, setIsBlurredApplied] = useState(false);
   const [formError, setFormError] = useState<string>('');
 
   // 1. Auth Listener & Initial Cloud Fetch
@@ -77,7 +81,7 @@ export default function ActivityPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Image file reader for CMS modal
+  // Image file reader for CMS modal with privacy blur integration
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -90,9 +94,13 @@ export default function ActivityPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      setRawImage(result);
       setPreviewImage(result);
       setFormData(prev => ({ ...prev, imageUrl: result }));
+      setIsBlurredApplied(false);
       setFormError('');
+      // Automatically prompt face blur studio for portrait rights
+      setIsBlurStudioOpen(true);
     };
     reader.readAsDataURL(file);
   };
@@ -704,11 +712,66 @@ export default function ActivityPage() {
                 </div>
 
                 {previewImage && (
-                  <div className="mt-2 relative w-full h-32 bg-black rounded-md border border-white/15 overflow-hidden">
-                    <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1.5 right-2 text-[10px] bg-black/70 px-2 py-0.5 rounded text-[#C6FF00] font-mono">
-                      미리보기
-                    </span>
+                  <div className="mt-3 space-y-2">
+                    <div className="relative w-full h-36 bg-black rounded-md border border-white/15 overflow-hidden">
+                      <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                        {isBlurredApplied ? (
+                          <span className="text-[10px] bg-[#C6FF00] text-black font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1">
+                            <ShieldCheck size={11} /> 초상권 보호 블러 적용됨
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-black/80 text-neutral-300 px-2 py-0.5 rounded border border-white/20">
+                            원본 미리보기
+                          </span>
+                        )}
+                      </div>
+                      <span className="absolute bottom-1.5 right-2 text-[10px] bg-black/70 px-2 py-0.5 rounded text-[#C6FF00] font-mono">
+                        미리보기
+                      </span>
+                    </div>
+
+                    {/* Privacy Studio Action Box */}
+                    <div className="p-3 rounded-lg bg-[#C6FF00]/5 border border-[#C6FF00]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                          <ShieldCheck size={14} className="text-[#C6FF00]" />
+                          <span>초상권 보호: 타인 얼굴 자동 블러</span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 mt-0.5">
+                          나를 제외한 다른 사람들의 얼굴을 자동 감지하여 가려줍니다.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isBlurredApplied && rawImage && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, imageUrl: rawImage }));
+                              setPreviewImage(rawImage);
+                              setIsBlurredApplied(false);
+                            }}
+                            className="px-2.5 py-1.5 rounded text-[11px] text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                          >
+                            원본 복구
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!rawImage && previewImage) {
+                              setRawImage(previewImage);
+                            }
+                            setIsBlurStudioOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded text-xs font-extrabold bg-[#C6FF00] text-black hover:bg-white transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(198,255,0,0.3)] cursor-pointer"
+                        >
+                          <Sparkles size={13} />
+                          <span>{isBlurredApplied ? '블러 재편집' : '얼굴 블러 스튜디오'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -798,6 +861,18 @@ export default function ActivityPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── Face Blur Studio Modal (Privacy Protection) ── */}
+      <FaceBlurStudioModal
+        isOpen={isBlurStudioOpen}
+        onClose={() => setIsBlurStudioOpen(false)}
+        imageSrc={rawImage || previewImage}
+        onApply={(processedDataUrl) => {
+          setPreviewImage(processedDataUrl);
+          setFormData(prev => ({ ...prev, imageUrl: processedDataUrl }));
+          setIsBlurredApplied(true);
+        }}
+      />
     </div>
   );
 }
