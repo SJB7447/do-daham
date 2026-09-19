@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, X, Sparkles, Check, RefreshCw, Sliders, Eye, EyeOff, 
   UserCheck, Plus, Trash2, HelpCircle, Layers, Move, Upload, User, 
-  ChevronLeft, ChevronRight, AlertCircle
+  ChevronLeft, ChevronRight, AlertCircle, Wand2, MousePointerClick
 } from 'lucide-react';
 import { 
   FaceBox, 
@@ -14,13 +14,13 @@ import {
   clearStoredAdminFaceTemplate,
   registerAdminFaceFromImage,
   classifyFacesWithTemplate,
+  isStrictHumanFace,
   AdminFaceTemplate
 } from '../utils/faceBlurEngine';
 
 interface FaceBlurStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Support both single imageSrc and multiple imageSrcs
   imageSrc?: string;
   imageSrcs?: string[];
   onApply: (processedDataUrls: string[]) => void;
@@ -41,7 +41,6 @@ export default function FaceBlurStudioModal({
   imageSrcs,
   onApply
 }: FaceBlurStudioModalProps) {
-  // Normalize incoming images to an array
   const rawList = imageSrcs && imageSrcs.length > 0 ? imageSrcs : (imageSrc ? [imageSrc] : []);
 
   const [activeIdx, setActiveIdx] = useState(0);
@@ -53,8 +52,8 @@ export default function FaceBlurStudioModal({
   // Global settings
   const [blurStyle, setBlurStyle] = useState<BlurStyle>('soft');
   const [blurIntensity, setBlurIntensity] = useState<number>(18);
-  const [filterBackView, setFilterBackView] = useState<boolean>(true);
-  const [interactionMode, setInteractionMode] = useState<'select' | 'draw'>('select');
+  const [showOverlays, setShowOverlays] = useState<boolean>(true); // Box overlay visibility toggle
+  const [interactionMode, setInteractionMode] = useState<'select' | 'pickMe' | 'draw'>('select');
   const [activeBoxId, setActiveBoxId] = useState<string | null>(null);
 
   // Admin face template state
@@ -74,15 +73,15 @@ export default function FaceBlurStudioModal({
   useEffect(() => {
     if (!isOpen || rawList.length === 0) return;
 
-    // Load admin face template from storage
     const stored = getStoredAdminFaceTemplate();
     setAdminTemplate(stored);
 
     setActiveIdx(0);
     setActiveBoxId(null);
     setRememberMeNotice(null);
+    setInteractionMode('select');
+    setShowOverlays(true);
 
-    // Initialize state objects for each raw image
     const initialStates: ImageEditState[] = rawList.map(src => ({
       rawSrc: src,
       loadedImg: null,
@@ -92,16 +91,14 @@ export default function FaceBlurStudioModal({
     }));
     setImagesState(initialStates);
 
-    // Auto-analyze the first image
-    loadImageAndAnalyze(0, initialStates, stored, filterBackView);
+    loadImageAndAnalyze(0, initialStates, stored);
   }, [isOpen, JSON.stringify(rawList)]);
 
-  // Helper to load and analyze a single image by index
+  // Load and analyze single image by index
   const loadImageAndAnalyze = async (
     idx: number, 
     currentStates: ImageEditState[],
-    template: AdminFaceTemplate | null,
-    backViewFilter: boolean
+    template: AdminFaceTemplate | null
   ) => {
     const item = currentStates[idx];
     if (!item) return;
@@ -112,7 +109,7 @@ export default function FaceBlurStudioModal({
     img.crossOrigin = 'anonymous';
     img.onload = async () => {
       try {
-        const detected = await detectFaces(img, { filterBackView: backViewFilter });
+        const detected = await detectFaces(img, { filterBackView: true, strictMode: true });
         const rendered = renderBlurredImage(img, detected, blurStyle, blurIntensity);
 
         setImagesState(prev => {
@@ -150,7 +147,7 @@ export default function FaceBlurStudioModal({
 
     const target = imagesState[idx];
     if (target && !target.isAnalyzed) {
-      loadImageAndAnalyze(idx, imagesState, adminTemplate, filterBackView);
+      loadImageAndAnalyze(idx, imagesState, adminTemplate);
     }
   };
 
@@ -174,7 +171,6 @@ export default function FaceBlurStudioModal({
     };
     renderImg.src = rendered;
 
-    // Update stored processedUrl for this index
     setImagesState(prev => {
       if (!prev[activeIdx] || prev[activeIdx].processedUrl === rendered) return prev;
       const next = [...prev];
@@ -212,11 +208,10 @@ export default function FaceBlurStudioModal({
     const targetBox = currentBoxes.find(b => b.id === id);
     if (!targetBox) return;
 
-    // Save as admin template asset
     const newTemplate = saveAdminFaceTemplate(currentLoadedImg, targetBox);
     if (newTemplate) {
       setAdminTemplate(newTemplate);
-      setRememberMeNotice('내 얼굴 에셋으로 등록되었습니다! 다음 사진들에도 자동으로 보존됩니다.');
+      setRememberMeNotice('내 얼굴로 지정 및 저장되었습니다! 앞으로 다른 사진에서도 자동 보존됩니다.');
       setTimeout(() => setRememberMeNotice(null), 4000);
     }
 
@@ -236,7 +231,71 @@ export default function FaceBlurStudioModal({
     setActiveBoxId(id);
   };
 
-  // Register admin face template from direct image/selfie file upload
+  // One-click "Pick Me" on canvas
+  const handleCanvasClickPickMe = (clickX: number, clickY: number) => {
+    if (!currentLoadedImg) return;
+
+    // Check if clicked inside or closest to existing box
+    let bestBoxId: string | null = null;
+    let minDist = Infinity;
+
+    for (const b of currentBoxes) {
+      const inside = clickX >= b.x && clickX <= b.x + b.width && clickY >= b.y && clickY <= b.y + b.height;
+      if (inside) {
+        bestBoxId = b.id;
+        break;
+      }
+      const cx = b.x + b.width / 2;
+      const cy = b.y + b.height / 2;
+      const dist = Math.hypot(clickX - cx, clickY - cy);
+      if (dist < minDist && dist < Math.max(b.width, b.height) * 1.5) {
+        minDist = dist;
+        bestBoxId = b.id;
+      }
+    }
+
+    if (bestBoxId) {
+      handleSetAsMe(bestBoxId);
+    } else {
+      // Create a manual box at clicked position
+      const boxSize = Math.max(40, Math.round(currentLoadedImg.naturalWidth * 0.08));
+      const newBox: FaceBox = {
+        id: `manual-me-${Date.now()}`,
+        x: Math.max(0, Math.round(clickX - boxSize / 2)),
+        y: Math.max(0, Math.round(clickY - boxSize / 2)),
+        width: boxSize,
+        height: Math.round(boxSize * 1.2),
+        isBlurred: false,
+        isMe: true,
+        manual: true
+      };
+
+      const newTemplate = saveAdminFaceTemplate(currentLoadedImg, newBox);
+      if (newTemplate) {
+        setAdminTemplate(newTemplate);
+      }
+
+      setImagesState(prev => {
+        const next = [...prev];
+        if (next[activeIdx]) {
+          const updated = next[activeIdx].boxes.map(b => ({ ...b, isMe: false, isBlurred: true }));
+          next[activeIdx] = {
+            ...next[activeIdx],
+            boxes: [...updated, newBox]
+          };
+        }
+        return next;
+      });
+      setActiveBoxId(newBox.id);
+      setRememberMeNotice('클릭한 위치가 내 얼굴로 지정되었습니다! (보존 완료)');
+      setTimeout(() => setRememberMeNotice(null), 4000);
+    }
+
+    // Switch back to select mode after picking me
+    setInteractionMode('select');
+  };
+
+  // Upload admin face template from file
   const handleUploadAdminFaceAsset = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -253,16 +312,22 @@ export default function FaceBlurStudioModal({
         setRememberMeNotice('내 얼굴 기준 에셋이 성공적으로 등록되었습니다!');
         setTimeout(() => setRememberMeNotice(null), 4000);
 
-        // Re-classify current image with newly registered face
         if (currentLoadedImg && currentBoxes.length > 0) {
-          reClassifyCurrentBoxes(currentLoadedImg, currentBoxes);
+          const updated = classifyFacesWithTemplate(currentLoadedImg, currentBoxes);
+          setImagesState(prev => {
+            const next = [...prev];
+            if (next[activeIdx]) {
+              next[activeIdx] = { ...next[activeIdx], boxes: updated };
+            }
+            return next;
+          });
         }
       } else {
         alert('얼굴을 인식하지 못했습니다. 얼굴이 선명한 정면 사진을 올려주세요.');
       }
     };
     reader.readAsDataURL(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
   const handleDeleteAdminFaceAsset = () => {
@@ -274,18 +339,34 @@ export default function FaceBlurStudioModal({
     }
   };
 
-  const reClassifyCurrentBoxes = (img: HTMLImageElement, boxes: FaceBox[]) => {
-    const updated = classifyFacesWithTemplate(img, boxes);
+  // Clean background noise: keeps only high-confidence strict faces
+  const handleCleanBackgroundNoise = () => {
+    if (!currentLoadedImg) return;
+    const cleaned = currentBoxes.filter(box => isStrictHumanFace(currentLoadedImg, box));
     setImagesState(prev => {
       const next = [...prev];
       if (next[activeIdx]) {
-        next[activeIdx] = { ...next[activeIdx], boxes: updated };
+        next[activeIdx] = { ...next[activeIdx], boxes: cleaned };
       }
       return next;
     });
+    setRememberMeNotice(`배경/의자/스크린 잡음을 정리했습니다. (${cleaned.length}개 얼굴 유지)`);
+    setTimeout(() => setRememberMeNotice(null), 3000);
   };
 
-  // Batch process all images using the saved face template
+  // Clear all boxes completely
+  const handleClearAllBoxes = () => {
+    setImagesState(prev => {
+      const next = [...prev];
+      if (next[activeIdx]) {
+        next[activeIdx] = { ...next[activeIdx], boxes: [] };
+      }
+      return next;
+    });
+    setActiveBoxId(null);
+  };
+
+  // Batch process all images
   const handleBatchProcessAll = async () => {
     if (imagesState.length <= 1) {
       handleBlurAllExceptMe();
@@ -309,7 +390,7 @@ export default function FaceBlurStudioModal({
         });
       }
 
-      const detected = await detectFaces(img, { filterBackView });
+      const detected = await detectFaces(img, { filterBackView: true, strictMode: true });
       const rendered = renderBlurredImage(img, detected, blurStyle, blurIntensity);
 
       updatedStates[i] = {
@@ -324,11 +405,10 @@ export default function FaceBlurStudioModal({
     setImagesState(updatedStates);
     setIsBatchProcessing(false);
     setBatchProgress(null);
-    setRememberMeNotice(`총 ${updatedStates.length}장의 사진에 대해 내 얼굴 보존 및 타인 블러 처리가 완료되었습니다!`);
+    setRememberMeNotice(`총 ${updatedStates.length}장의 사진에 대해 일괄 처리가 완료되었습니다!`);
     setTimeout(() => setRememberMeNotice(null), 4000);
   };
 
-  // Quick batch: Blur all except me in current image
   const handleBlurAllExceptMe = () => {
     setImagesState(prev => {
       const next = [...prev];
@@ -342,21 +422,6 @@ export default function FaceBlurStudioModal({
     });
   };
 
-  // Quick batch: Blur all
-  const handleBlurAll = () => {
-    setImagesState(prev => {
-      const next = [...prev];
-      if (next[activeIdx]) {
-        next[activeIdx] = {
-          ...next[activeIdx],
-          boxes: next[activeIdx].boxes.map(b => ({ ...b, isBlurred: true }))
-        };
-      }
-      return next;
-    });
-  };
-
-  // Quick batch: Clear all blur
   const handleClearAllBlur = () => {
     setImagesState(prev => {
       const next = [...prev];
@@ -370,7 +435,6 @@ export default function FaceBlurStudioModal({
     });
   };
 
-  // Delete box
   const handleDeleteBox = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setImagesState(prev => {
@@ -386,9 +450,9 @@ export default function FaceBlurStudioModal({
     if (activeBoxId === id) setActiveBoxId(null);
   };
 
-  // Mouse events for drawing manual blur boxes
+  // Mouse events for drawing manual blur boxes or picking me
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (interactionMode !== 'draw' || !currentLoadedImg || !containerRef.current) return;
+    if (!currentLoadedImg || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const scaleX = currentLoadedImg.naturalWidth / rect.width;
@@ -397,9 +461,16 @@ export default function FaceBlurStudioModal({
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    setIsDrawing(true);
-    setDrawStart({ x, y });
-    setCurrentDraw({ x, y, w: 0, h: 0 });
+    if (interactionMode === 'pickMe') {
+      handleCanvasClickPickMe(x, y);
+      return;
+    }
+
+    if (interactionMode === 'draw') {
+      setIsDrawing(true);
+      setDrawStart({ x, y });
+      setCurrentDraw({ x, y, w: 0, h: 0 });
+    }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -458,33 +529,8 @@ export default function FaceBlurStudioModal({
     setCurrentDraw(null);
   };
 
-  // Re-detect faces with new back-view filter setting
-  const handleToggleBackViewFilter = async () => {
-    const nextFilter = !filterBackView;
-    setFilterBackView(nextFilter);
-    if (currentLoadedImg) {
-      setIsAnalyzing(true);
-      try {
-        const detected = await detectFaces(currentLoadedImg, { filterBackView: nextFilter });
-        setImagesState(prev => {
-          const next = [...prev];
-          if (next[activeIdx]) {
-            next[activeIdx] = {
-              ...next[activeIdx],
-              boxes: detected
-            };
-          }
-          return next;
-        });
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }
-  };
-
   // Final apply for all images
   const handleApplyFinal = () => {
-    // Generate final data URLs for all images
     const finalResults = imagesState.map(item => {
       if (item.loadedImg) {
         return renderBlurredImage(item.loadedImg, item.boxes, blurStyle, blurIntensity);
@@ -500,7 +546,7 @@ export default function FaceBlurStudioModal({
   const meBox = currentBoxes.find(b => b.isMe);
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-xl flex flex-col justify-between overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-xl flex flex-col justify-between overflow-hidden animate-fadeIn select-none">
       {/* ── Top Header Bar ── */}
       <div className="h-16 px-6 border-b border-white/10 bg-[#0E0E11]/90 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -517,20 +563,19 @@ export default function FaceBlurStudioModal({
               </span>
               {imagesState.length > 1 && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-mono font-bold border border-blue-500/40">
-                  총 {imagesState.length}장 다중 사진 모드
+                  총 {imagesState.length}장 다중 사진
                 </span>
               )}
             </div>
             <p className="text-[11px] text-neutral-400">
-              내 얼굴은 보존하고 타인 얼굴만 자동으로 블러 처리합니다. (뒷모습 오인식 자동 필터링)
+              사진에서 본인 얼굴을 지정하면, 참석자들만 자동으로 블러 처리됩니다.
             </p>
           </div>
         </div>
 
         {/* Top Right: My Face Asset Widget & Close */}
         <div className="flex items-center gap-4">
-          {/* Admin Face Asset Widget */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/50 border border-white/15">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 border border-white/15">
             <div className="flex items-center gap-2">
               {adminTemplate?.thumbnail ? (
                 <img 
@@ -541,7 +586,7 @@ export default function FaceBlurStudioModal({
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-neutral-400">
-                  <User size={15} />
+                  <User size={14} />
                 </div>
               )}
               <div className="text-left">
@@ -559,7 +604,6 @@ export default function FaceBlurStudioModal({
               </div>
             </div>
 
-            {/* Hidden Input for Face Asset Upload */}
             <input
               type="file"
               ref={myFaceUploadInputRef}
@@ -571,7 +615,7 @@ export default function FaceBlurStudioModal({
             <button
               type="button"
               onClick={() => myFaceUploadInputRef.current?.click()}
-              className="px-2 py-1 text-[10px] font-bold bg-[#C6FF00]/15 hover:bg-[#C6FF00] text-[#C6FF00] hover:text-black border border-[#C6FF00]/30 rounded transition-all flex items-center gap-1"
+              className="px-2 py-1 text-[10px] font-bold bg-[#C6FF00]/15 hover:bg-[#C6FF00] text-[#C6FF00] hover:text-black border border-[#C6FF00]/30 rounded transition-all flex items-center gap-1 cursor-pointer"
               title="내 얼굴 기준 사진(셀카/프로필) 파일 등록"
             >
               <Upload size={10} />
@@ -590,7 +634,6 @@ export default function FaceBlurStudioModal({
             )}
           </div>
 
-          {/* Close Button */}
           <button
             onClick={onClose}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
@@ -603,40 +646,105 @@ export default function FaceBlurStudioModal({
 
       {/* ── Control Toolbar ── */}
       <div className="px-6 py-2.5 border-b border-white/10 bg-[#141418] flex flex-wrap items-center justify-between gap-3 shrink-0">
-        {/* Left: Blur Style, Strength & Back-view Filter */}
-        <div className="flex flex-wrap items-center gap-4 md:gap-6">
+        {/* Left: Interaction Tools */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Primary: Pick Me On Canvas Mode */}
+          <button
+            type="button"
+            onClick={() => setInteractionMode(interactionMode === 'pickMe' ? 'select' : 'pickMe')}
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-all font-bold cursor-pointer ${
+              interactionMode === 'pickMe'
+                ? 'bg-[#C6FF00] text-black ring-2 ring-[#C6FF00]/50 shadow-[0_0_15px_rgba(198,255,0,0.4)] animate-pulse'
+                : 'bg-[#C6FF00]/15 text-[#C6FF00] hover:bg-[#C6FF00] hover:text-black border border-[#C6FF00]/40'
+            }`}
+            title="사진에서 본인 얼굴 위치를 콕 클릭하면 즉시 '나'로 지정됩니다"
+          >
+            <MousePointerClick size={14} />
+            <span>👑 사진에서 나 콕 찍기</span>
+          </button>
+
+          {/* Select Mode */}
+          <button
+            type="button"
+            onClick={() => setInteractionMode('select')}
+            className={`px-2.5 py-1.5 rounded text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              interactionMode === 'select'
+                ? 'bg-white/15 text-white font-bold border border-white/30'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <UserCheck size={13} />
+            <span>박스 선택</span>
+          </button>
+
+          {/* Draw Mode */}
+          <button
+            type="button"
+            onClick={() => setInteractionMode('draw')}
+            className={`px-2.5 py-1.5 rounded text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              interactionMode === 'draw'
+                ? 'bg-[#C6FF00]/20 text-[#C6FF00] font-bold border border-[#C6FF00]/50'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Plus size={13} />
+            <span>수동 영역 추가</span>
+          </button>
+
+          {/* Toggle box outlines (Preview cleanly) */}
+          <button
+            type="button"
+            onClick={() => setShowOverlays(!showOverlays)}
+            className={`px-2.5 py-1.5 rounded text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
+              showOverlays
+                ? 'bg-white/5 border-white/15 text-neutral-300'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            }`}
+            title="박스 표시를 끄고 완성된 블러 사진을 깨끗하게 확인합니다"
+          >
+            {showOverlays ? <Eye size={13} /> : <EyeOff size={13} />}
+            <span>{showOverlays ? '박스 보기' : '박스 숨김(미리보기)'}</span>
+          </button>
+
+          {/* Clean Noise */}
+          <button
+            type="button"
+            onClick={handleCleanBackgroundNoise}
+            className="px-2.5 py-1.5 rounded text-xs flex items-center gap-1 text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            title="나무 벽, 의자, 모니터 등 배경 잡음 박스를 정리합니다"
+          >
+            <Wand2 size={13} className="text-[#C6FF00]" />
+            <span>배경 잡음 정리</span>
+          </button>
+        </div>
+
+        {/* Right: Style & Batch Actions */}
+        <div className="flex flex-wrap items-center gap-3">
           {/* Style Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-400 font-medium">효과:</span>
-            <div className="inline-flex p-0.5 rounded-md bg-black/40 border border-white/10 text-xs">
-              <button
-                type="button"
-                onClick={() => setBlurStyle('soft')}
-                className={`px-2.5 py-1 rounded transition-all font-medium ${
-                  blurStyle === 'soft'
-                    ? 'bg-[#C6FF00] text-black font-bold shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                소프트 블러
-              </button>
-              <button
-                type="button"
-                onClick={() => setBlurStyle('mosaic')}
-                className={`px-2.5 py-1 rounded transition-all font-medium ${
-                  blurStyle === 'mosaic'
-                    ? 'bg-[#C6FF00] text-black font-bold shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                모자이크
-              </button>
-            </div>
+          <div className="inline-flex p-0.5 rounded-md bg-black/40 border border-white/10 text-xs">
+            <button
+              type="button"
+              onClick={() => setBlurStyle('soft')}
+              className={`px-2 py-1 rounded transition-all font-medium ${
+                blurStyle === 'soft' ? 'bg-[#C6FF00] text-black font-bold' : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              소프트
+            </button>
+            <button
+              type="button"
+              onClick={() => setBlurStyle('mosaic')}
+              className={`px-2 py-1 rounded transition-all font-medium ${
+                blurStyle === 'mosaic' ? 'bg-[#C6FF00] text-black font-bold' : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              모자이크
+            </button>
           </div>
 
-          {/* Intensity Slider */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-400 font-medium">강도:</span>
+          {/* Strength Slider */}
+          <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+            <span>강도:</span>
             <input
               type="range"
               min="8"
@@ -644,84 +752,38 @@ export default function FaceBlurStudioModal({
               step="1"
               value={blurIntensity}
               onChange={(e) => setBlurIntensity(Number(e.target.value))}
-              className="w-20 accent-[#C6FF00] cursor-pointer"
+              className="w-16 accent-[#C6FF00] cursor-pointer"
             />
-            <span className="text-xs font-mono text-[#C6FF00] w-5">{blurIntensity}</span>
           </div>
 
-          {/* Back-view filter toggle */}
-          <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-            <button
-              type="button"
-              onClick={handleToggleBackViewFilter}
-              className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 transition-all font-medium ${
-                filterBackView
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'bg-white/5 text-neutral-400 border border-white/10'
-              }`}
-              title="뒷모습, 목덜미, 뒤통수 영역을 얼굴 감지에서 제외합니다."
-            >
-              <ShieldCheck size={13} />
-              <span>뒷모습 오인식 방지: {filterBackView ? '켜짐' : '꺼짐'}</span>
-            </button>
-          </div>
-
-          {/* Tool Mode: Select vs Draw */}
-          <div className="flex items-center gap-1.5 border-l border-white/10 pl-4">
-            <button
-              type="button"
-              onClick={() => setInteractionMode('select')}
-              className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 transition-all ${
-                interactionMode === 'select'
-                  ? 'bg-white/15 text-white font-bold border border-white/30'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <UserCheck size={13} />
-              <span>얼굴 선택/토글</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setInteractionMode('draw')}
-              className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 transition-all ${
-                interactionMode === 'draw'
-                  ? 'bg-[#C6FF00]/20 text-[#C6FF00] font-bold border border-[#C6FF00]/50'
-                  : 'text-neutral-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Plus size={13} />
-              <span>수동 영역 추가</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Batch Actions */}
-        <div className="flex items-center gap-2 text-xs">
+          {/* Batch Actions */}
           {imagesState.length > 1 && (
             <button
               type="button"
               disabled={isBatchProcessing}
               onClick={handleBatchProcessAll}
-              className="px-3 py-1.5 rounded bg-[#C6FF00]/20 text-[#C6FF00] hover:bg-[#C6FF00] hover:text-black font-extrabold border border-[#C6FF00]/40 transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(198,255,0,0.2)] disabled:opacity-50"
+              className="px-3 py-1.5 rounded bg-[#C6FF00]/20 text-[#C6FF00] hover:bg-[#C6FF00] hover:text-black font-extrabold border border-[#C6FF00]/40 transition-all flex items-center gap-1 shadow-[0_0_10px_rgba(198,255,0,0.2)] disabled:opacity-50 text-xs cursor-pointer"
               title="등록된 내 얼굴 에셋을 바탕으로 모든 사진에 일괄 적용합니다"
             >
               <Sparkles size={13} />
               <span>전체 사진 일괄 블러</span>
             </button>
           )}
+
           <button
             type="button"
             onClick={handleBlurAllExceptMe}
-            className="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 transition-colors"
+            className="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 text-xs transition-colors cursor-pointer"
           >
             나 제외 블러
           </button>
           <button
             type="button"
-            onClick={handleClearAllBlur}
-            className="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/10 transition-colors"
+            onClick={handleClearAllBoxes}
+            className="px-2.5 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs transition-colors cursor-pointer"
+            title="모든 박스를 지우고 수동으로 원하는 사람만 블러합니다"
           >
-            초기화
+            전체 박스 지우기
           </button>
         </div>
       </div>
@@ -741,7 +803,15 @@ export default function FaceBlurStudioModal({
 
       {/* ── Main Canvas Workspace ── */}
       <div className="flex-1 relative overflow-auto bg-[#070709] flex items-center justify-center p-4">
-        {/* Loading / Scanning Indicator */}
+        {/* Pick Me Active Guide Overlay */}
+        {interactionMode === 'pickMe' && (
+          <div className="absolute top-4 z-40 bg-[#C6FF00] text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl flex items-center gap-2 animate-bounce pointer-events-none">
+            <MousePointerClick size={16} />
+            <span>사진 속 강사님(본인) 얼굴을 마우스로 콕 클릭해주세요!</span>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
         {(isAnalyzing || isBatchProcessing) && (
           <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-fadeIn">
             <div className="relative w-16 h-16">
@@ -758,13 +828,13 @@ export default function FaceBlurStudioModal({
                   : 'AI가 사진 속 인물 얼굴을 분석 중입니다...'}
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                뒷모습/목덜미는 제외하고 정면 얼굴과 내 얼굴을 브라우저 내에서 정밀 분석합니다.
+                뒷모습, 의자, 벽면 잡음은 제외하고 정밀 분석합니다.
               </p>
             </div>
           </div>
         )}
 
-        {/* Canvas & Overlay Container */}
+        {/* Canvas & Clean Overlay Container */}
         {currentLoadedImg && (
           <div
             ref={containerRef}
@@ -772,7 +842,11 @@ export default function FaceBlurStudioModal({
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             className={`relative max-w-full max-h-[calc(100vh-270px)] select-none shadow-2xl rounded-lg overflow-hidden border border-white/10 ${
-              interactionMode === 'draw' ? 'cursor-crosshair' : 'cursor-default'
+              interactionMode === 'pickMe'
+                ? 'cursor-pointer ring-4 ring-[#C6FF00]/60'
+                : interactionMode === 'draw'
+                ? 'cursor-crosshair'
+                : 'cursor-default'
             }`}
             style={{
               aspectRatio: `${currentLoadedImg.naturalWidth} / ${currentLoadedImg.naturalHeight}`
@@ -784,8 +858,8 @@ export default function FaceBlurStudioModal({
               className="w-full h-full object-contain block"
             />
 
-            {/* Bounding Box Overlays */}
-            {!isAnalyzing && currentBoxes.map((box) => {
+            {/* Clean Box Overlays: NO CONSTANT CROWDED BADGES */}
+            {!isAnalyzing && showOverlays && currentBoxes.map((box) => {
               const leftPct = (box.x / currentLoadedImg.naturalWidth) * 100;
               const topPct = (box.y / currentLoadedImg.naturalHeight) * 100;
               const widthPct = (box.width / currentLoadedImg.naturalWidth) * 100;
@@ -799,65 +873,76 @@ export default function FaceBlurStudioModal({
                 <div
                   key={box.id}
                   onClick={(e) => {
-                    setActiveBoxId(box.id);
-                    if (interactionMode === 'select') {
-                      handleToggleBlur(box.id, e);
+                    e.stopPropagation();
+                    if (interactionMode === 'pickMe') {
+                      handleSetAsMe(box.id, e);
+                      setInteractionMode('select');
+                      return;
                     }
+                    setActiveBoxId(box.id);
                   }}
                   className={`absolute transition-all group ${
                     isMe
-                      ? 'border-2 border-[#C6FF00] bg-[#C6FF00]/15'
+                      ? 'border-2 border-[#C6FF00] bg-[#C6FF00]/10 ring-2 ring-[#C6FF00]/30 z-20'
                       : isBlurred
-                      ? 'border-2 border-[#FF5252] bg-[#FF5252]/15'
-                      : 'border-2 border-white/50 border-dashed bg-black/20 hover:border-white'
-                  } ${isActive ? 'ring-2 ring-white/80' : ''}`}
+                      ? 'border border-[#FF5252]/80 bg-[#FF5252]/15 hover:border-[#FF5252] z-10'
+                      : 'border border-white/40 border-dashed bg-black/10 hover:border-white z-10'
+                  } ${isActive ? 'ring-2 ring-white shadow-lg' : ''}`}
                   style={{
                     left: `${leftPct}%`,
                     top: `${topPct}%`,
                     width: `${widthPct}%`,
                     height: `${heightPct}%`,
-                    borderRadius: '8px'
+                    borderRadius: '6px'
                   }}
                 >
-                  {/* Badge */}
-                  <div className="absolute -top-7 left-0 flex items-center gap-1 z-20 pointer-events-auto">
-                    {isMe ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C6FF00] text-black shadow-md flex items-center gap-1">
-                        👑 나 (보존됨)
-                      </span>
-                    ) : isBlurred ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FF5252] text-white shadow-md flex items-center gap-1">
-                        🛡️ 타인 (블러됨)
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-800 text-neutral-300 border border-white/20">
-                        미적용
-                      </span>
-                    )}
+                  {/* Subtle Tiny Crown Indicator for "Me" ONLY (No text clutter) */}
+                  {isMe && (
+                    <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-[#C6FF00] text-black flex items-center justify-center shadow-lg font-bold text-xs pointer-events-none">
+                      👑
+                    </div>
+                  )}
 
-                    {/* Quick set as ME */}
-                    {!isMe && (
+                  {/* Compact Floating Action Toolbar ONLY on HOVER or ACTIVE */}
+                  <div className={`absolute -top-9 left-1/2 -translate-x-1/2 z-30 pointer-events-auto transition-all ${
+                    isActive ? 'flex' : 'hidden group-hover:flex'
+                  }`}>
+                    <div className="flex items-center gap-1 p-1 rounded-lg bg-black/95 border border-white/20 shadow-2xl backdrop-blur-md whitespace-nowrap">
+                      {isMe ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C6FF00] text-black">
+                          👑 나 (보존됨)
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetAsMe(box.id, e)}
+                          className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C6FF00]/20 hover:bg-[#C6FF00] text-[#C6FF00] hover:text-black transition-colors"
+                        >
+                          👑 이 사람이 나예요
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={(e) => handleSetAsMe(box.id, e)}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/80 hover:bg-[#C6FF00] hover:text-black text-white border border-white/20 transition-colors shadow-sm"
-                        title="이 얼굴을 내 얼굴로 지정하고 영구 에셋으로 저장합니다"
+                        onClick={(e) => handleToggleBlur(box.id, e)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                          isBlurred
+                            ? 'bg-[#FF5252]/20 hover:bg-[#FF5252] text-[#FF5252] hover:text-white'
+                            : 'bg-white/10 hover:bg-white/20 text-neutral-300'
+                        }`}
                       >
-                        이 사람이 나예요
+                        {isBlurred ? '🛡️ 블러 끄기' : '블러 적용'}
                       </button>
-                    )}
 
-                    {/* Delete if manual box */}
-                    {box.manual && (
                       <button
                         type="button"
                         onClick={(e) => handleDeleteBox(box.id, e)}
-                        className="p-0.5 rounded bg-black/80 hover:bg-red-600 text-white transition-colors"
-                        title="영역 삭제"
+                        className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-white/10 transition-colors"
+                        title="박스 삭제"
                       >
                         <Trash2 size={11} />
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
@@ -866,7 +951,7 @@ export default function FaceBlurStudioModal({
             {/* Currently Drawing Box Preview */}
             {isDrawing && currentDraw && currentLoadedImg && (
               <div
-                className="absolute border-2 border-[#C6FF00] border-dashed bg-[#C6FF00]/10 pointer-events-none rounded"
+                className="absolute border-2 border-[#C6FF00] border-dashed bg-[#C6FF00]/15 pointer-events-none rounded"
                 style={{
                   left: `${(currentDraw.x / currentLoadedImg.naturalWidth) * 100}%`,
                   top: `${(currentDraw.y / currentLoadedImg.naturalHeight) * 100}%`,
@@ -919,13 +1004,13 @@ export default function FaceBlurStudioModal({
 
           {meBox ? (
             <span className="hidden sm:inline-block px-2.5 py-0.5 rounded bg-[#C6FF00]/10 border border-[#C6FF00]/30 text-[11px] text-[#C6FF00] font-bold">
-              👑 본인 식별 완료 (보존)
+              👑 강사 본인 보존됨
             </span>
-          ) : !adminTemplate ? (
+          ) : (
             <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-400">
-              💡 내 얼굴 기준 사진을 등록하거나 사진 속 '이 사람이 나예요'를 눌러주세요
+              💡 상단 '👑 사진에서 나 콕 찍기'를 누르고 본인 얼굴을 클릭하면 즉시 보존됩니다!
             </span>
-          ) : null}
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -933,7 +1018,7 @@ export default function FaceBlurStudioModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+            className="px-4 py-2 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
           >
             취소 및 원본 유지
           </button>
@@ -941,7 +1026,7 @@ export default function FaceBlurStudioModal({
           <button
             type="button"
             onClick={handleApplyFinal}
-            className="px-5 py-2 rounded-lg text-xs font-extrabold text-black bg-[#C6FF00] hover:bg-white hover:shadow-[0_0_20px_rgba(198,255,0,0.4)] transition-all flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 rounded-lg text-xs font-extrabold text-black bg-[#C6FF00] hover:bg-white hover:shadow-[0_0_20px_rgba(198,255,0,0.4)] transition-all flex items-center gap-2 cursor-pointer"
           >
             <Check size={15} />
             <span>
