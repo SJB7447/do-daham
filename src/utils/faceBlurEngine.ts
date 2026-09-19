@@ -265,26 +265,48 @@ export async function detectFaces(
 ): Promise<FaceBox[]> {
   let boxes: FaceBox[] = [];
 
-  // 1. Google BlazeFace Neural Network (Highly accurate, rejects non-faces, walls, furniture, back-of-head)
+  // 1. Google BlazeFace Neural Network (Scale-assisted for high accuracy on distant faces)
   try {
     const model = await getBlazeFaceModel();
     if (model) {
-      // returnTensors: false
-      const predictions = await model.estimateFaces(image, false);
+      // Create optimal resolution canvas for BlazeFace (max dimension 1280px)
+      const maxDim = 1280;
+      let scale = 1;
+      if (image.naturalWidth > maxDim || image.naturalHeight > maxDim) {
+        scale = maxDim / Math.max(image.naturalWidth, image.naturalHeight);
+      }
+
+      let inputElement: HTMLImageElement | HTMLCanvasElement = image;
+      if (scale < 1) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = Math.round(image.naturalWidth * scale);
+        tempCanvas.height = Math.round(image.naturalHeight * scale);
+        const ctx = tempCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(image, 0, 0, tempCanvas.width, tempCanvas.height);
+          inputElement = tempCanvas;
+        }
+      }
+
+      const predictions = await model.estimateFaces(inputElement, false);
       if (predictions && predictions.length > 0) {
         boxes = predictions.map((pred: any, idx: number) => {
           const tl = pred.topLeft as [number, number];
           const br = pred.bottomRight as [number, number];
-          const rawW = br[0] - tl[0];
-          const rawH = br[1] - tl[1];
 
-          // Small natural margin around detected face
-          const marginW = rawW * 0.18;
-          const marginH = rawH * 0.22;
-          const x = Math.max(0, tl[0] - marginW);
-          const y = Math.max(0, tl[1] - marginH * 0.8);
+          // Re-scale coordinates back to original image size
+          const rawX = tl[0] / scale;
+          const rawY = tl[1] / scale;
+          const rawW = (br[0] - tl[0]) / scale;
+          const rawH = (br[1] - tl[1]) / scale;
+
+          // Natural margin around detected face
+          const marginW = rawW * 0.16;
+          const marginH = rawH * 0.20;
+          const x = Math.max(0, rawX - marginW);
+          const y = Math.max(0, rawY - marginH * 0.7);
           const width = Math.min(image.naturalWidth - x, rawW + marginW * 2);
-          const height = Math.min(image.naturalHeight - y, rawH + marginH * 1.8);
+          const height = Math.min(image.naturalHeight - y, rawH + marginH * 1.7);
 
           const prob = Array.isArray(pred.probability) ? pred.probability[0] : (pred.probability ?? 0.95);
 
@@ -300,8 +322,8 @@ export async function detectFaces(
           };
         });
 
-        // Filter out very low confidence detections (< 0.70)
-        boxes = boxes.filter(b => (b.confidence ?? 1) >= 0.70);
+        // Keep all genuine face detections (confidence >= 0.50)
+        boxes = boxes.filter(b => (b.confidence ?? 1) >= 0.50);
       }
     }
   } catch (err) {
@@ -313,7 +335,7 @@ export async function detectFaces(
     try {
       const detector = new (window as any).FaceDetector({
         fastMode: false,
-        maxDetectedFaces: 25
+        maxDetectedFaces: 35
       });
       const faces = await detector.detect(image);
       if (faces && faces.length > 0) {
@@ -334,7 +356,7 @@ export async function detectFaces(
             height: Math.round(height),
             isBlurred: true,
             isMe: false,
-            confidence: 0.92
+            confidence: 0.90
           };
         });
       }
@@ -395,24 +417,24 @@ export function classifyFacesWithTemplate(image: HTMLImageElement, boxes: FaceBo
     });
   }
 
-  // If template matched with good confidence (>= 0.46), assign as "Me"
-  if (template && bestMeIdx !== -1 && bestScore >= 0.46) {
+  // If template matched with reasonable similarity (>= 0.38), preserve Me and blur others
+  if (template && bestMeIdx !== -1 && bestScore >= 0.38) {
     return boxes.map((box, idx) => {
       const isMe = idx === bestMeIdx;
       return {
         ...box,
         isMe,
-        isBlurred: !isMe
+        isBlurred: !isMe // Other people are automatically blurred
       };
     });
   }
 
-  // If only 1 person detected, default as Me
-  if (boxes.length === 1) {
+  // If only 1 person detected and no template, default as Me
+  if (boxes.length === 1 && !template) {
     return [{ ...boxes[0], isMe: true, isBlurred: false }];
   }
 
-  // Otherwise, default all to blurred (protect attendee privacy)
+  // Otherwise, all detected faces are blurred by default (attendees protected)
   return boxes.map(box => ({
     ...box,
     isMe: false,

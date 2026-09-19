@@ -51,7 +51,7 @@ export default function FaceBlurStudioModal({
   // Global settings
   const [blurStyle, setBlurStyle] = useState<BlurStyle>('soft');
   const [blurIntensity, setBlurIntensity] = useState<number>(18);
-  const [showOverlays, setShowOverlays] = useState<boolean>(true); // Box overlay visibility toggle
+  const [showOverlays, setShowOverlays] = useState<boolean>(true);
   const [interactionMode, setInteractionMode] = useState<'select' | 'pickMe' | 'draw'>('select');
   const [activeBoxId, setActiveBoxId] = useState<string | null>(null);
 
@@ -68,7 +68,18 @@ export default function FaceBlurStudioModal({
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const myFaceUploadInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Initial setup when modal opens or images change
+  // Helper to load an HTMLImageElement
+  const loadImageElement = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(img);
+      img.src = src;
+    });
+  };
+
+  // 1. Initial setup when modal opens: Auto-analyze ALL images in sequence
   useEffect(() => {
     if (!isOpen || rawList.length === 0) return;
 
@@ -90,24 +101,58 @@ export default function FaceBlurStudioModal({
     }));
     setImagesState(initialStates);
 
-    loadImageAndAnalyze(0, initialStates, stored);
+    // Auto-analyze all images so every photo has attendees blurred automatically
+    analyzeAllImagesSequentially(initialStates, stored);
   }, [isOpen, JSON.stringify(rawList)]);
 
-  // Load and analyze single image by index
-  const loadImageAndAnalyze = async (
-    idx: number, 
-    currentStates: ImageEditState[],
-    template: AdminFaceTemplate | null
-  ) => {
-    const item = currentStates[idx];
-    if (!item) return;
-
+  // Sequentially analyze all images in the background
+  const analyzeAllImagesSequentially = async (states: ImageEditState[], template: AdminFaceTemplate | null) => {
     setIsAnalyzing(true);
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = async () => {
+    for (let i = 0; i < states.length; i++) {
       try {
+        const item = states[i];
+        const img = await loadImageElement(item.rawSrc);
+        const detected = await detectFaces(img, { filterBackView: true, strictMode: true });
+        const rendered = renderBlurredImage(img, detected, blurStyle, blurIntensity);
+
+        setImagesState(prev => {
+          const next = [...prev];
+          if (next[i]) {
+            next[i] = {
+              ...next[i],
+              loadedImg: img,
+              boxes: detected,
+              isAnalyzed: true,
+              processedUrl: rendered
+            };
+          }
+          return next;
+        });
+
+        if (i === 0 && detected.length > 0) {
+          const meBox = detected.find(b => b.isMe);
+          setActiveBoxId(meBox ? meBox.id : detected[0].id);
+        }
+      } catch (err) {
+        console.error('Auto-analysis error for image index', i, err);
+      }
+    }
+
+    setIsAnalyzing(false);
+  };
+
+  // Switch active image from filmstrip
+  const handleSelectImage = async (idx: number) => {
+    if (idx === activeIdx || idx < 0 || idx >= imagesState.length) return;
+    setActiveIdx(idx);
+    setActiveBoxId(null);
+
+    const target = imagesState[idx];
+    if (target && !target.isAnalyzed) {
+      setIsAnalyzing(true);
+      try {
+        const img = target.loadedImg || await loadImageElement(target.rawSrc);
         const detected = await detectFaces(img, { filterBackView: true, strictMode: true });
         const rendered = renderBlurredImage(img, detected, blurStyle, blurIntensity);
 
@@ -124,29 +169,9 @@ export default function FaceBlurStudioModal({
           }
           return next;
         });
-
-        if (detected.length > 0) {
-          const meBox = detected.find(b => b.isMe);
-          setActiveBoxId(meBox ? meBox.id : detected[0].id);
-        }
-      } catch (err) {
-        console.error('Face detection failed for image', idx, err);
       } finally {
         setIsAnalyzing(false);
       }
-    };
-    img.src = item.rawSrc;
-  };
-
-  // Switch active image
-  const handleSelectImage = (idx: number) => {
-    if (idx === activeIdx || idx < 0 || idx >= imagesState.length) return;
-    setActiveIdx(idx);
-    setActiveBoxId(null);
-
-    const target = imagesState[idx];
-    if (target && !target.isAnalyzed) {
-      loadImageAndAnalyze(idx, imagesState, adminTemplate);
     }
   };
 
@@ -199,7 +224,7 @@ export default function FaceBlurStudioModal({
     });
   };
 
-  // Set single box as "Me (Admin)" and save to admin template
+  // Set single box as "Me (Admin)", save template, and automatically propagate to all other photos
   const handleSetAsMe = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!currentLoadedImg) return;
@@ -210,23 +235,29 @@ export default function FaceBlurStudioModal({
     const newTemplate = saveAdminFaceTemplate(currentLoadedImg, targetBox);
     if (newTemplate) {
       setAdminTemplate(newTemplate);
-      setRememberMeNotice('내 얼굴로 지정 및 저장되었습니다! 앞으로 다른 사진에서도 자동 보존됩니다.');
+      setRememberMeNotice('내 얼굴로 지정 및 저장되었습니다! 다른 사진들에도 자동으로 보존 적용됩니다.');
       setTimeout(() => setRememberMeNotice(null), 4000);
     }
 
+    // Update current image and propagate to other analyzed photos
     setImagesState(prev => {
-      const next = [...prev];
-      if (next[activeIdx]) {
-        const nextBoxes = next[activeIdx].boxes.map(b => {
-          if (b.id === id) {
-            return { ...b, isMe: true, isBlurred: false };
-          }
-          return { ...b, isMe: false, isBlurred: true };
-        });
-        next[activeIdx] = { ...next[activeIdx], boxes: nextBoxes };
-      }
-      return next;
+      return prev.map((imgState, sIdx) => {
+        if (sIdx === activeIdx) {
+          const updatedBoxes = imgState.boxes.map(b => ({
+            ...b,
+            isMe: b.id === id,
+            isBlurred: b.id !== id // Preserve me, blur all others
+          }));
+          return { ...imgState, boxes: updatedBoxes };
+        } else if (imgState.loadedImg && imgState.boxes.length > 0) {
+          // Re-classify other photos with this new template
+          const updatedBoxes = classifyFacesWithTemplate(imgState.loadedImg, imgState.boxes);
+          return { ...imgState, boxes: updatedBoxes };
+        }
+        return imgState;
+      });
     });
+
     setActiveBoxId(id);
   };
 
@@ -234,7 +265,6 @@ export default function FaceBlurStudioModal({
   const handleCanvasClickPickMe = (clickX: number, clickY: number) => {
     if (!currentLoadedImg) return;
 
-    // Check if clicked inside or closest to existing box
     let bestBoxId: string | null = null;
     let minDist = Infinity;
 
@@ -256,7 +286,6 @@ export default function FaceBlurStudioModal({
     if (bestBoxId) {
       handleSetAsMe(bestBoxId);
     } else {
-      // Create a manual box at clicked position
       const boxSize = Math.max(40, Math.round(currentLoadedImg.naturalWidth * 0.08));
       const newBox: FaceBox = {
         id: `manual-me-${Date.now()}`,
@@ -275,22 +304,26 @@ export default function FaceBlurStudioModal({
       }
 
       setImagesState(prev => {
-        const next = [...prev];
-        if (next[activeIdx]) {
-          const updated = next[activeIdx].boxes.map(b => ({ ...b, isMe: false, isBlurred: true }));
-          next[activeIdx] = {
-            ...next[activeIdx],
-            boxes: [...updated, newBox]
-          };
-        }
-        return next;
+        return prev.map((imgState, sIdx) => {
+          if (sIdx === activeIdx) {
+            const updated = imgState.boxes.map(b => ({ ...b, isMe: false, isBlurred: true }));
+            return {
+              ...imgState,
+              boxes: [...updated, newBox]
+            };
+          } else if (imgState.loadedImg && imgState.boxes.length > 0) {
+            const updated = classifyFacesWithTemplate(imgState.loadedImg, imgState.boxes);
+            return { ...imgState, boxes: updated };
+          }
+          return imgState;
+        });
       });
+
       setActiveBoxId(newBox.id);
       setRememberMeNotice('클릭한 위치가 내 얼굴로 지정되었습니다! (보존 완료)');
       setTimeout(() => setRememberMeNotice(null), 4000);
     }
 
-    // Switch back to select mode after picking me
     setInteractionMode('select');
   };
 
@@ -308,19 +341,19 @@ export default function FaceBlurStudioModal({
 
       if (template) {
         setAdminTemplate(template);
-        setRememberMeNotice('내 얼굴 기준 에셋이 성공적으로 등록되었습니다!');
+        setRememberMeNotice('내 얼굴 기준 에셋이 성공적으로 등록되었습니다! 모든 사진에 보존 적용됩니다.');
         setTimeout(() => setRememberMeNotice(null), 4000);
 
-        if (currentLoadedImg && currentBoxes.length > 0) {
-          const updated = classifyFacesWithTemplate(currentLoadedImg, currentBoxes);
-          setImagesState(prev => {
-            const next = [...prev];
-            if (next[activeIdx]) {
-              next[activeIdx] = { ...next[activeIdx], boxes: updated };
+        // Re-classify all photos with new face template
+        setImagesState(prev => {
+          return prev.map(imgState => {
+            if (imgState.loadedImg && imgState.boxes.length > 0) {
+              const updated = classifyFacesWithTemplate(imgState.loadedImg, imgState.boxes);
+              return { ...imgState, boxes: updated };
             }
-            return next;
+            return imgState;
           });
-        }
+        });
       } else {
         alert('얼굴을 인식하지 못했습니다. 얼굴이 선명한 정면 사진을 올려주세요.');
       }
@@ -338,10 +371,10 @@ export default function FaceBlurStudioModal({
     }
   };
 
-  // Clean background noise: keeps only high-confidence strict faces
+  // Clean background noise: keeps high confidence faces
   const handleCleanBackgroundNoise = () => {
     if (!currentLoadedImg) return;
-    const cleaned = currentBoxes.filter(box => box.manual || (box.confidence ?? 1) >= 0.85);
+    const cleaned = currentBoxes.filter(box => box.manual || (box.confidence ?? 1) >= 0.75);
     setImagesState(prev => {
       const next = [...prev];
       if (next[activeIdx]) {
@@ -349,11 +382,11 @@ export default function FaceBlurStudioModal({
       }
       return next;
     });
-    setRememberMeNotice(`배경 잡음을 정리했습니다. (${cleaned.length}개 정밀 얼굴 유지)`);
+    setRememberMeNotice(`배경 잡음을 정리했습니다. (${cleaned.length}개 얼굴 유지)`);
     setTimeout(() => setRememberMeNotice(null), 3000);
   };
 
-  // Clear all boxes completely
+  // Clear all boxes completely on current photo
   const handleClearAllBoxes = () => {
     setImagesState(prev => {
       const next = [...prev];
@@ -365,13 +398,8 @@ export default function FaceBlurStudioModal({
     setActiveBoxId(null);
   };
 
-  // Batch process all images
+  // Batch process all images: re-detect and strictly blur all attendees across ALL photos
   const handleBatchProcessAll = async () => {
-    if (imagesState.length <= 1) {
-      handleBlurAllExceptMe();
-      return;
-    }
-
     setIsBatchProcessing(true);
     const updatedStates = [...imagesState];
 
@@ -379,16 +407,7 @@ export default function FaceBlurStudioModal({
       setBatchProgress({ current: i + 1, total: updatedStates.length });
       const item = updatedStates[i];
 
-      let img = item.loadedImg;
-      if (!img) {
-        img = await new Promise<HTMLImageElement>((resolve) => {
-          const newImg = new Image();
-          newImg.crossOrigin = 'anonymous';
-          newImg.onload = () => resolve(newImg);
-          newImg.src = item.rawSrc;
-        });
-      }
-
+      const img = item.loadedImg || await loadImageElement(item.rawSrc);
       const detected = await detectFaces(img, { filterBackView: true, strictMode: true });
       const rendered = renderBlurredImage(img, detected, blurStyle, blurIntensity);
 
@@ -404,10 +423,11 @@ export default function FaceBlurStudioModal({
     setImagesState(updatedStates);
     setIsBatchProcessing(false);
     setBatchProgress(null);
-    setRememberMeNotice(`총 ${updatedStates.length}장의 사진에 대해 일괄 처리가 완료되었습니다!`);
+    setRememberMeNotice(`전체 ${updatedStates.length}장의 사진에 대해 '내 얼굴 보존 + 타인 블러'가 일괄 적용되었습니다!`);
     setTimeout(() => setRememberMeNotice(null), 4000);
   };
 
+  // Quick batch: Blur all except me on current image
   const handleBlurAllExceptMe = () => {
     setImagesState(prev => {
       const next = [...prev];
@@ -421,19 +441,7 @@ export default function FaceBlurStudioModal({
     });
   };
 
-  const handleClearAllBlur = () => {
-    setImagesState(prev => {
-      const next = [...prev];
-      if (next[activeIdx]) {
-        next[activeIdx] = {
-          ...next[activeIdx],
-          boxes: next[activeIdx].boxes.map(b => ({ ...b, isBlurred: false }))
-        };
-      }
-      return next;
-    });
-  };
-
+  // Delete box
   const handleDeleteBox = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setImagesState(prev => {
@@ -528,15 +536,19 @@ export default function FaceBlurStudioModal({
     setCurrentDraw(null);
   };
 
-  // Final apply for all images
-  const handleApplyFinal = () => {
-    const finalResults = imagesState.map(item => {
-      if (item.loadedImg) {
-        return renderBlurredImage(item.loadedImg, item.boxes, blurStyle, blurIntensity);
-      }
-      return item.processedUrl || item.rawSrc;
-    });
+  // Final apply for all images: strictly renders all images with blurred attendees
+  const handleApplyFinal = async () => {
+    setIsAnalyzing(true);
+    const finalResults: string[] = [];
 
+    for (let i = 0; i < imagesState.length; i++) {
+      const item = imagesState[i];
+      const img = item.loadedImg || await loadImageElement(item.rawSrc);
+      const rendered = renderBlurredImage(img, item.boxes, blurStyle, blurIntensity);
+      finalResults.push(rendered);
+    }
+
+    setIsAnalyzing(false);
     onApply(finalResults);
     onClose();
   };
@@ -562,12 +574,12 @@ export default function FaceBlurStudioModal({
               </span>
               {imagesState.length > 1 && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-mono font-bold border border-blue-500/40">
-                  총 {imagesState.length}장 다중 사진
+                  총 {imagesState.length}장 다중 사진 모드
                 </span>
               )}
             </div>
             <p className="text-[11px] text-neutral-400">
-              사진에서 본인 얼굴을 지정하면, 참석자들만 자동으로 블러 처리됩니다.
+              내 얼굴은 보존하고 참석자 얼굴만 자동으로 블러 처리합니다. (다중 사진 일괄 동기화 지원)
             </p>
           </div>
         </div>
@@ -598,7 +610,7 @@ export default function FaceBlurStudioModal({
                   )}
                 </div>
                 <div className="text-[9px] text-neutral-400">
-                  {adminTemplate ? '자동 매칭 보존 중' : '셀카 등록 또는 사진에서 지정'}
+                  {adminTemplate ? '모든 사진 자동 보존 중' : '셀카 등록 또는 사진에서 지정'}
                 </div>
               </div>
             </div>
@@ -656,7 +668,7 @@ export default function FaceBlurStudioModal({
                 ? 'bg-[#C6FF00] text-black ring-2 ring-[#C6FF00]/50 shadow-[0_0_15px_rgba(198,255,0,0.4)] animate-pulse'
                 : 'bg-[#C6FF00]/15 text-[#C6FF00] hover:bg-[#C6FF00] hover:text-black border border-[#C6FF00]/40'
             }`}
-            title="사진에서 본인 얼굴 위치를 콕 클릭하면 즉시 '나'로 지정됩니다"
+            title="사진 속 본인 얼굴 위치를 콕 클릭하면 즉시 '나'로 지정되고 나머지는 블러됩니다"
           >
             <MousePointerClick size={14} />
             <span>👑 사진에서 나 콕 찍기</span>
@@ -690,7 +702,7 @@ export default function FaceBlurStudioModal({
             <span>수동 영역 추가</span>
           </button>
 
-          {/* Toggle box outlines (Preview cleanly) */}
+          {/* Toggle box outlines */}
           <button
             type="button"
             onClick={() => setShowOverlays(!showOverlays)}
@@ -710,7 +722,7 @@ export default function FaceBlurStudioModal({
             type="button"
             onClick={handleCleanBackgroundNoise}
             className="px-2.5 py-1.5 rounded text-xs flex items-center gap-1 text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
-            title="나무 벽, 의자, 모니터 등 배경 잡음 박스를 정리합니다"
+            title="낮은 신뢰도의 잡음 박스를 정리합니다"
           >
             <Wand2 size={13} className="text-[#C6FF00]" />
             <span>배경 잡음 정리</span>
@@ -780,7 +792,7 @@ export default function FaceBlurStudioModal({
             type="button"
             onClick={handleClearAllBoxes}
             className="px-2.5 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs transition-colors cursor-pointer"
-            title="모든 박스를 지우고 수동으로 원하는 사람만 블러합니다"
+            title="현재 사진의 모든 박스를 지우고 수동으로 원하는 사람만 블러합니다"
           >
             전체 박스 지우기
           </button>
@@ -827,7 +839,7 @@ export default function FaceBlurStudioModal({
                   : 'AI가 사진 속 인물 얼굴을 분석 중입니다...'}
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                뒷모습, 의자, 벽면 잡음은 제외하고 정밀 분석합니다.
+                Google BlazeFace 신경망이 사람 얼굴만 정밀 감지합니다.
               </p>
             </div>
           </div>
@@ -857,7 +869,7 @@ export default function FaceBlurStudioModal({
               className="w-full h-full object-contain block"
             />
 
-            {/* Clean Box Overlays: NO CONSTANT CROWDED BADGES */}
+            {/* Clean Box Overlays: NO CROWDED TEXT BADGES */}
             {!isAnalyzing && showOverlays && currentBoxes.map((box) => {
               const leftPct = (box.x / currentLoadedImg.naturalWidth) * 100;
               const topPct = (box.y / currentLoadedImg.naturalHeight) * 100;
@@ -880,7 +892,7 @@ export default function FaceBlurStudioModal({
                     }
                     setActiveBoxId(box.id);
                   }}
-                  className={`absolute transition-all group ${
+                  className={`absolute transition-all group cursor-pointer ${
                     isMe
                       ? 'border-2 border-[#C6FF00] bg-[#C6FF00]/10 ring-2 ring-[#C6FF00]/30 z-20'
                       : isBlurred
@@ -895,7 +907,7 @@ export default function FaceBlurStudioModal({
                     borderRadius: '6px'
                   }}
                 >
-                  {/* Subtle Tiny Crown Indicator for "Me" ONLY (No text clutter) */}
+                  {/* Subtle Tiny Crown for "Me" */}
                   {isMe && (
                     <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-[#C6FF00] text-black flex items-center justify-center shadow-lg font-bold text-xs pointer-events-none">
                       👑
@@ -915,7 +927,7 @@ export default function FaceBlurStudioModal({
                         <button
                           type="button"
                           onClick={(e) => handleSetAsMe(box.id, e)}
-                          className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C6FF00]/20 hover:bg-[#C6FF00] text-[#C6FF00] hover:text-black transition-colors"
+                          className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C6FF00]/20 hover:bg-[#C6FF00] text-[#C6FF00] hover:text-black transition-colors cursor-pointer"
                         >
                           👑 이 사람이 나예요
                         </button>
@@ -924,7 +936,7 @@ export default function FaceBlurStudioModal({
                       <button
                         type="button"
                         onClick={(e) => handleToggleBlur(box.id, e)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
                           isBlurred
                             ? 'bg-[#FF5252]/20 hover:bg-[#FF5252] text-[#FF5252] hover:text-white'
                             : 'bg-white/10 hover:bg-white/20 text-neutral-300'
@@ -936,7 +948,7 @@ export default function FaceBlurStudioModal({
                       <button
                         type="button"
                         onClick={(e) => handleDeleteBox(box.id, e)}
-                        className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-white/10 transition-colors"
+                        className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
                         title="박스 삭제"
                       >
                         <Trash2 size={11} />
@@ -969,23 +981,38 @@ export default function FaceBlurStudioModal({
           <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider shrink-0">
             사진 목록 ({activeIdx + 1}/{imagesState.length})
           </span>
-          <div className="flex items-center gap-2">
-            {imagesState.map((st, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSelectImage(idx)}
-                className={`relative w-14 h-11 rounded-md overflow-hidden border transition-all shrink-0 cursor-pointer ${
-                  activeIdx === idx
-                    ? 'border-[#C6FF00] ring-2 ring-[#C6FF00]/40 scale-105 shadow-md'
-                    : 'border-white/15 opacity-60 hover:opacity-100'
-                }`}
-              >
-                <img src={st.processedUrl || st.rawSrc} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-                <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-white bg-black/70 px-1 rounded">
-                  #{idx + 1}
-                </span>
-              </button>
-            ))}
+          <div className="flex items-center gap-2.5">
+            {imagesState.map((st, idx) => {
+              const blCount = st.boxes.filter(b => b.isBlurred).length;
+              const hasMe = st.boxes.some(b => b.isMe);
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectImage(idx)}
+                  className={`relative w-16 h-12 rounded-md overflow-hidden border transition-all shrink-0 cursor-pointer ${
+                    activeIdx === idx
+                      ? 'border-[#C6FF00] ring-2 ring-[#C6FF00]/40 scale-105 shadow-md'
+                      : 'border-white/15 opacity-65 hover:opacity-100'
+                  }`}
+                >
+                  <img src={st.processedUrl || st.rawSrc} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
+                  <span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-white bg-black/70 px-1 rounded">
+                    #{idx + 1}
+                  </span>
+                  {hasMe && (
+                    <span className="absolute top-0.5 left-1 text-[8px] font-bold text-[#C6FF00] bg-black/80 px-1 rounded">
+                      👑 나
+                    </span>
+                  )}
+                  {blCount > 0 && (
+                    <span className="absolute bottom-0.5 left-1 text-[8px] font-bold text-[#FF5252] bg-black/80 px-1 rounded">
+                      🛡️{blCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -996,8 +1023,8 @@ export default function FaceBlurStudioModal({
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#C6FF00] animate-pulse" />
             <span>
-              현재 사진: 감지된 얼굴 <strong className="text-white font-mono">{currentBoxes.length}</strong>명 중{' '}
-              <strong className="text-[#FF5252] font-mono">{blurredCount}</strong>명 블러
+              현재 사진: 감지된 인물 <strong className="text-white font-mono">{currentBoxes.length}</strong>명 중{' '}
+              <strong className="text-[#FF5252] font-mono">{blurredCount}</strong>명 블러 적용
             </span>
           </div>
 
