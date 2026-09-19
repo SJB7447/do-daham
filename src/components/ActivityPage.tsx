@@ -40,12 +40,13 @@ export default function ActivityPage() {
     organization: '',
     date: new Date().toISOString().slice(0, 7).replace('-', '.'),
     imageUrl: '',
+    additionalImages: [] as string[],
     link: '',
     description: '',
     tags: ''
   });
-  const [previewImage, setPreviewImage] = useState<string>('');
-  const [rawImage, setRawImage] = useState<string>('');
+  // Multi-image state: holds list of photos with raw and processed data URLs
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ id: string; raw: string; processed: string; isBlurred: boolean }[]>([]);
   const [isBlurStudioOpen, setIsBlurStudioOpen] = useState(false);
   const [isBlurredApplied, setIsBlurredApplied] = useState(false);
   const [formError, setFormError] = useState<string>('');
@@ -81,28 +82,73 @@ export default function ActivityPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Image file reader for CMS modal with privacy blur integration
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Image file reader for CMS modal with privacy blur integration (Supports multiple images)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? (Array.from(e.target.files) as File[]) : [];
+    if (files.length === 0) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      setFormError('파일 용량이 너무 큽니다. (8MB 이하 권장)');
-      return;
-    }
+    const validFiles = files.filter((f: File) => {
+      if (f.size > 8 * 1024 * 1024) {
+        setFormError(`파일 용량이 너무 큽니다: ${f.name} (8MB 이하 권장)`);
+        return false;
+      }
+      return true;
+    });
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setRawImage(result);
-      setPreviewImage(result);
-      setFormData(prev => ({ ...prev, imageUrl: result }));
+    if (validFiles.length === 0) return;
+
+    try {
+      const readPromises = validFiles.map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const loadedUrls = await Promise.all(readPromises);
+      const newItems = loadedUrls.map((url, idx) => ({
+        id: `img-${Date.now()}-${idx}`,
+        raw: url,
+        processed: url,
+        isBlurred: false
+      }));
+
+      setUploadedPhotos(prev => {
+        const combined = [...prev, ...newItems];
+        // Set first as primary imageUrl, rest as additionalImages
+        setFormData(f => ({
+          ...f,
+          imageUrl: combined[0]?.processed || '',
+          additionalImages: combined.slice(1).map(p => p.processed)
+        }));
+        return combined;
+      });
+
       setIsBlurredApplied(false);
       setFormError('');
       // Automatically prompt face blur studio for portrait rights
       setIsBlurStudioOpen(true);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to read files', err);
+      setFormError('이미지 파일을 읽는 중 오류가 발생했습니다.');
+    } finally {
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  // Remove single uploaded photo
+  const handleRemovePhoto = (id: string) => {
+    setUploadedPhotos(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      setFormData(f => ({
+        ...f,
+        imageUrl: updated[0]?.processed || '',
+        additionalImages: updated.slice(1).map(p => p.processed)
+      }));
+      return updated;
+    });
   };
 
   // Submit new activity (Strictly requires authorized admin)
@@ -121,7 +167,7 @@ export default function ActivityPage() {
       setFormError('기관명 또는 언론사명을 입력해주세요.');
       return;
     }
-    if (!formData.imageUrl.trim() && !previewImage) {
+    if (!formData.imageUrl.trim() && uploadedPhotos.length === 0) {
       setFormError('사진 파일 또는 이미지 URL을 등록해주세요.');
       return;
     }
@@ -129,13 +175,19 @@ export default function ActivityPage() {
     setIsSubmitting(true);
     setFormError('');
 
+    const primaryImg = formData.imageUrl || (uploadedPhotos[0] ? uploadedPhotos[0].processed : '');
+    const extraImgs = uploadedPhotos.length > 1
+      ? uploadedPhotos.slice(1).map(p => p.processed)
+      : (formData.additionalImages && formData.additionalImages.length > 0 ? formData.additionalImages : undefined);
+
     const newActivity: ActivityItem = {
       id: `act-custom-${Date.now()}`,
       category: formData.category,
       title: formData.title.trim(),
       organization: formData.organization.trim(),
       date: formData.date.trim() || new Date().toISOString().slice(0, 7).replace('-', '.'),
-      imageUrl: formData.imageUrl || previewImage,
+      imageUrl: primaryImg,
+      additionalImages: extraImgs,
       link: formData.link.trim() || undefined,
       description: formData.description.trim(),
       tags: formData.tags
@@ -156,11 +208,13 @@ export default function ActivityPage() {
         organization: '',
         date: new Date().toISOString().slice(0, 7).replace('-', '.'),
         imageUrl: '',
+        additionalImages: [],
         link: '',
         description: '',
         tags: ''
       });
-      setPreviewImage('');
+      setUploadedPhotos([]);
+      setIsBlurredApplied(false);
       alert('새 활동이 클라우드에 안전하게 발행되었습니다.');
     } catch (err: any) {
       setFormError(err.message || '저장 중 오류가 발생했습니다.');
@@ -689,47 +743,77 @@ export default function ActivityPage() {
               </div>
 
               <div>
-                <label className="block text-neutral-400 mb-1 font-bold">
-                  사진 첨부 또는 이미지 URL *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-neutral-400 font-bold">
+                    현장 사진 첨부 (여러 장 선택 가능) *
+                  </label>
+                  {uploadedPhotos.length > 0 && (
+                    <span className="text-[11px] font-mono text-[#C6FF00]">
+                      총 {uploadedPhotos.length}장 업로드됨
+                    </span>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <input
                     type="file"
+                    multiple
                     accept="image/*"
                     onChange={handleFileChange}
                     className="block w-full text-xs text-neutral-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-[#C6FF00] file:text-[#0A0A0A] hover:file:bg-white file:cursor-pointer cursor-pointer border border-white/15 bg-black/60 p-1.5 rounded-md"
                   />
-                  <div className="text-[10px] text-neutral-500">또는 이미지 웹 링크 직접 입력:</div>
+                  <div className="text-[10px] text-neutral-500">또는 단일 이미지 웹 링크 직접 입력:</div>
                   <input
                     type="url"
                     placeholder="https://example.com/photo.jpg"
                     value={formData.imageUrl.startsWith('data:') ? '' : formData.imageUrl}
                     onChange={e => {
                       setFormData({ ...formData, imageUrl: e.target.value });
-                      setPreviewImage(e.target.value);
                     }}
                     className="w-full bg-black/60 border border-white/15 focus:border-[#C6FF00] rounded-md px-3 py-2.5 text-white outline-none transition-colors"
                   />
                 </div>
 
-                {previewImage && (
+                {/* Uploaded Photos Grid Preview */}
+                {uploadedPhotos.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    <div className="relative w-full h-36 bg-black rounded-md border border-white/15 overflow-hidden">
-                      <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                        {isBlurredApplied ? (
-                          <span className="text-[10px] bg-[#C6FF00] text-black font-extrabold px-2 py-0.5 rounded shadow-md flex items-center gap-1">
-                            <ShieldCheck size={11} /> 초상권 보호 블러 적용됨
-                          </span>
-                        ) : (
-                          <span className="text-[10px] bg-black/80 text-neutral-300 px-2 py-0.5 rounded border border-white/20">
-                            원본 미리보기
-                          </span>
-                        )}
-                      </div>
-                      <span className="absolute bottom-1.5 right-2 text-[10px] bg-black/70 px-2 py-0.5 rounded text-[#C6FF00] font-mono">
-                        미리보기
-                      </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-2 bg-black/50 rounded-lg border border-white/10">
+                      {uploadedPhotos.map((photo, idx) => (
+                        <div 
+                          key={photo.id}
+                          className="relative aspect-[16/10] bg-black rounded-md overflow-hidden border border-white/15 group"
+                        >
+                          <img 
+                            src={photo.processed} 
+                            alt={`preview-${idx}`} 
+                            className="w-full h-full object-cover" 
+                          />
+                          <div className="absolute top-1 left-1 flex items-center gap-1">
+                            {idx === 0 ? (
+                              <span className="text-[9px] bg-[#C6FF00] text-black font-extrabold px-1.5 py-0.5 rounded shadow">
+                                대표 사진
+                              </span>
+                            ) : (
+                              <span className="text-[9px] bg-black/70 text-neutral-200 font-mono px-1 py-0.5 rounded border border-white/20">
+                                #{idx + 1}
+                              </span>
+                            )}
+                            {photo.isBlurred && (
+                              <span className="text-[9px] bg-emerald-500 text-white font-bold px-1 py-0.5 rounded shadow flex items-center gap-0.5">
+                                <ShieldCheck size={9} /> 블러
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(photo.id)}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-black/70 text-white/80 hover:text-red-400 hover:bg-black transition-colors opacity-0 group-hover:opacity-100"
+                            title="사진 삭제"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
 
                     {/* Privacy Studio Action Box */}
@@ -737,20 +821,30 @@ export default function ActivityPage() {
                       <div>
                         <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                           <ShieldCheck size={14} className="text-[#C6FF00]" />
-                          <span>초상권 보호: 타인 얼굴 자동 블러</span>
+                          <span>초상권 보호: 내 얼굴 제외 자동 블러</span>
                         </div>
                         <p className="text-[11px] text-neutral-400 mt-0.5">
-                          나를 제외한 다른 사람들의 얼굴을 자동 감지하여 가려줍니다.
+                          나를 제외한 참석자 얼굴만 자동 감지하여 가려줍니다. (뒷모습은 제외)
                         </p>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {isBlurredApplied && rawImage && (
+                        {isBlurredApplied && (
                           <button
                             type="button"
                             onClick={() => {
-                              setFormData(prev => ({ ...prev, imageUrl: rawImage }));
-                              setPreviewImage(rawImage);
+                              setUploadedPhotos(prev => prev.map(p => ({
+                                ...p,
+                                processed: p.raw,
+                                isBlurred: false
+                              })));
+                              if (uploadedPhotos.length > 0) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  imageUrl: uploadedPhotos[0].raw,
+                                  additionalImages: uploadedPhotos.slice(1).map(p => p.raw)
+                                }));
+                              }
                               setIsBlurredApplied(false);
                             }}
                             className="px-2.5 py-1.5 rounded text-[11px] text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
@@ -760,12 +854,7 @@ export default function ActivityPage() {
                         )}
                         <button
                           type="button"
-                          onClick={() => {
-                            if (!rawImage && previewImage) {
-                              setRawImage(previewImage);
-                            }
-                            setIsBlurStudioOpen(true);
-                          }}
+                          onClick={() => setIsBlurStudioOpen(true)}
                           className="px-3 py-1.5 rounded text-xs font-extrabold bg-[#C6FF00] text-black hover:bg-white transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(198,255,0,0.3)] cursor-pointer"
                         >
                           <Sparkles size={13} />
@@ -867,11 +956,21 @@ export default function ActivityPage() {
       <FaceBlurStudioModal
         isOpen={isBlurStudioOpen}
         onClose={() => setIsBlurStudioOpen(false)}
-        imageSrc={rawImage || previewImage}
-        onApply={(processedDataUrl) => {
-          setPreviewImage(processedDataUrl);
-          setFormData(prev => ({ ...prev, imageUrl: processedDataUrl }));
-          setIsBlurredApplied(true);
+        imageSrcs={uploadedPhotos.length > 0 ? uploadedPhotos.map(p => p.raw) : (formData.imageUrl ? [formData.imageUrl] : [])}
+        onApply={(processedDataUrls) => {
+          if (processedDataUrls.length > 0) {
+            setUploadedPhotos(prev => prev.map((p, idx) => ({
+              ...p,
+              processed: processedDataUrls[idx] || p.raw,
+              isBlurred: true
+            })));
+            setFormData(prev => ({
+              ...prev,
+              imageUrl: processedDataUrls[0],
+              additionalImages: processedDataUrls.slice(1)
+            }));
+            setIsBlurredApplied(true);
+          }
         }}
       />
     </div>
