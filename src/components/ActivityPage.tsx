@@ -516,7 +516,7 @@ export default function ActivityPage() {
       {/* ── Editorial Detail Modal (Full Story & Student Quotes) ── */}
       {selectedItem && (
         <div 
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+          className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8 overflow-y-auto animate-fadeIn"
           onClick={() => setSelectedItem(null)}
         >
           <div 
@@ -642,40 +642,44 @@ export default function ActivityPage() {
       {/* ── CMS Add Modal (ADMIN ONLY) ── */}
       {isAddModalOpen && isAdmin && (
         <div 
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn"
           onClick={() => setIsAddModalOpen(false)}
         >
           <div 
-            className="relative max-w-xl w-full bg-[#161619] border border-[#C6FF00]/30 rounded-xl p-6 md:p-8 my-8 shadow-2xl"
+            className="relative max-w-xl w-full max-h-[92vh] bg-[#161619] border border-[#C6FF00]/40 rounded-xl flex flex-col shadow-[0_25px_60px_rgba(0,0,0,0.9)] my-auto overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="mb-6">
-              <div className="text-[11px] font-mono text-[#C6FF00] uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                <ShieldCheck size={13} />
-                <span>INSTRUCTOR CMS · VERIFIED ADMIN ({currentUser?.email})</span>
+            {/* Modal Header (Fixed Top) */}
+            <div className="p-5 md:px-7 border-b border-white/10 bg-[#161619] shrink-0 flex items-start justify-between">
+              <div>
+                <div className="text-[11px] font-mono text-[#C6FF00] uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                  <ShieldCheck size={13} />
+                  <span>INSTRUCTOR CMS · VERIFIED ADMIN ({currentUser?.email})</span>
+                </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight ff-disp">
+                  새 현장 활동 / 언론 보도 등록
+                </h3>
+                <p className="text-xs text-neutral-400 mt-1">
+                  등록하신 내용은 클라우드(Firestore)에 안전하게 저장되어 모든 방문자에게 실시간 반영됩니다.
+                </p>
               </div>
-              <h3 className="text-2xl font-extrabold text-white tracking-tight ff-disp">
-                새 현장 활동 / 언론 보도 등록
-              </h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                등록하신 내용은 클라우드(Firestore)에 안전하게 저장되어 모든 방문자에게 실시간 반영됩니다.
-              </p>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors shrink-0 ml-2"
+                title="닫기"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            {formError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-md">
-                {formError}
-              </div>
-            )}
+            {/* Scrollable Form Body */}
+            <form id="activity-cms-form" onSubmit={handleSubmitActivity} className="overflow-y-auto p-5 md:p-7 space-y-4 text-xs flex-1">
+              {formError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-md">
+                  {formError}
+                </div>
+              )}
 
-            <form onSubmit={handleSubmitActivity} className="space-y-4 text-xs">
               <div>
                 <label className="block text-neutral-400 mb-1.5 font-bold uppercase tracking-wider">
                   분류 선택 *
@@ -900,26 +904,28 @@ export default function ActivityPage() {
                   className="w-full bg-black/60 border border-white/15 focus:border-[#C6FF00] rounded-md px-3 py-2.5 text-white outline-none transition-colors"
                 />
               </div>
-
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-white/10">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-white/20 text-neutral-300 font-bold rounded-md hover:border-white/50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center gap-1.5 px-5 py-2 bg-[#C6FF00] text-[#0A0A0A] font-extrabold rounded-md hover:bg-white transition-all shadow-[0_0_15px_rgba(198,255,0,0.25)] disabled:opacity-50"
-                >
-                  {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
-                  <span>{isSubmitting ? '저장 중...' : '클라우드에 등록 완료'}</span>
-                </button>
-              </div>
             </form>
+
+            {/* Modal Footer (Fixed Bottom) */}
+            <div className="p-4 md:px-7 border-t border-white/10 bg-[#141417] flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-4 py-2 border border-white/20 text-neutral-300 font-bold rounded-md hover:border-white/50 transition-colors cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                form="activity-cms-form"
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-[#C6FF00] text-[#0A0A0A] font-extrabold rounded-md hover:bg-white transition-all shadow-[0_0_15px_rgba(198,255,0,0.25)] disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : null}
+                <span>{isSubmitting ? '저장 중...' : '클라우드에 등록 완료'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
