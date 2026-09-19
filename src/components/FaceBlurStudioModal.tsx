@@ -14,7 +14,6 @@ import {
   clearStoredAdminFaceTemplate,
   registerAdminFaceFromImage,
   classifyFacesWithTemplate,
-  isStrictHumanFace,
   AdminFaceTemplate
 } from '../utils/faceBlurEngine';
 
@@ -342,7 +341,7 @@ export default function FaceBlurStudioModal({
   // Clean background noise: keeps only high-confidence strict faces
   const handleCleanBackgroundNoise = () => {
     if (!currentLoadedImg) return;
-    const cleaned = currentBoxes.filter(box => isStrictHumanFace(currentLoadedImg, box));
+    const cleaned = currentBoxes.filter(box => box.manual || (box.confidence ?? 1) >= 0.85);
     setImagesState(prev => {
       const next = [...prev];
       if (next[activeIdx]) {
@@ -350,7 +349,7 @@ export default function FaceBlurStudioModal({
       }
       return next;
     });
-    setRememberMeNotice(`배경/의자/스크린 잡음을 정리했습니다. (${cleaned.length}개 얼굴 유지)`);
+    setRememberMeNotice(`배경 잡음을 정리했습니다. (${cleaned.length}개 정밀 얼굴 유지)`);
     setTimeout(() => setRememberMeNotice(null), 3000);
   };
 
