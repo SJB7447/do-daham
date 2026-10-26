@@ -8,7 +8,18 @@ import ActivityPage from './components/ActivityPage';
 import ActivityHighlightSection from './components/ActivityHighlightSection';
 import { Settings } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
-import { isYoutubeUrl, getYoutubeEmbedUrl } from './lib/youtube';
+import { isYoutubeUrl, getYoutubeEmbedUrl, getYoutubeWatchUrl, isEmbeddableYoutubeVideo } from './lib/youtube';
+
+const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
+
+function normalizeYoutubeHref(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.includes('youtube.com/@do-daham')) {
+    return DEFAULT_YOUTUBE_CHANNEL_URL;
+  }
+  return trimmed;
+}
 
 function RouteScrollHandler() {
   const { pathname, hash } = useLocation();
@@ -211,6 +222,36 @@ function PortfolioHome() {
           const raw = docSnap.data().data;
           const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
           
+          const seenIds = new Set<number | string>();
+          const rawActions = Array.isArray(parsed.actions)
+            ? parsed.actions
+            : [
+                { id: 1, title: "CodeM Studio", href: DEFAULT_YOUTUBE_CHANNEL_URL, img: mCubeLogo, external: true },
+                { id: 2, title: "Mood Brew", href: "https://cafe.do-daham.com/mood/", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
+                { id: 3, title: "MechFlow", href: "https://machine.do-daham.com", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
+                { id: 4, title: "Coming Soon...", href: "", img: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false }
+              ];
+
+          const normalizedActions = rawActions.filter(Boolean).map((a: any, idx: number) => {
+            let id = a.id ?? (idx + 1);
+            while (seenIds.has(id)) {
+              id = Date.now() + idx + Math.floor(Math.random() * 10000);
+            }
+            seenIds.add(id);
+            const normalizedHref = normalizeYoutubeHref(a.href);
+            const normalizedVideoSrc = normalizeYoutubeHref(a.videoSrc);
+            return {
+              ...a,
+              id,
+              title: a.title ?? '',
+              href: normalizedHref,
+              img: a.img ?? '',
+              mediaType: a.mediaType || 'image',
+              videoSrc: normalizedVideoSrc,
+              external: a.external ?? (normalizedHref ? normalizedHref.startsWith('http') : false)
+            };
+          });
+
           setData({
             userName: parsed.userName || "DO-DAHAM",
             userRole: parsed.userRole || "CREATIVE REBELS",
@@ -224,7 +265,7 @@ function PortfolioHome() {
               descriptionSub: parsed.masterpiece?.descriptionSub || "",
               embedSrc: parsed.masterpiece?.embedSrc || ""
             },
-            actions: parsed.actions || []
+            actions: normalizedActions
           });
         }
       } catch (err) {
@@ -242,6 +283,13 @@ function PortfolioHome() {
       DO WHATEVER YOU WANT <span className="dot">/</span> 하고싶은거 다해 <span className="dot">/</span>{" "}
     </span>
   ));
+
+  const youtubeAction = data.actions.find(
+    (a: any) => isYoutubeUrl(a.href || '') || isYoutubeUrl(a.videoSrc || '')
+  );
+  const watchHref = youtubeAction
+    ? getYoutubeWatchUrl(normalizeYoutubeHref(youtubeAction.href || youtubeAction.videoSrc))
+    : DEFAULT_YOUTUBE_CHANNEL_URL;
 
   if (loading) {
     return (
@@ -275,7 +323,7 @@ function PortfolioHome() {
           </Link>
         </div>
         {/* <Link to="/workshop" className="nav-mobile-workshop">WORKSHOP</Link> */}
-        <a href="https://www.youtube.com/@do-daham" target="_blank" rel="noopener noreferrer" className="nav-watch">WATCH →</a>
+        <a href={watchHref} target="_blank" rel="noopener noreferrer" className="nav-watch">WATCH →</a>
       </nav>
 
       {/* Hero Section */}
@@ -331,7 +379,7 @@ function PortfolioHome() {
         <div className="masterpiece-inner">
           <div className="video-block">
             {data.masterpiece.embedSrc ? (
-              isYoutubeUrl(data.masterpiece.embedSrc) ? (
+              isEmbeddableYoutubeVideo(data.masterpiece.embedSrc) ? (
                 <iframe
                   className="absolute top-0 left-0 w-full h-full border-0"
                   src={getYoutubeEmbedUrl(data.masterpiece.embedSrc)}
@@ -349,13 +397,18 @@ function PortfolioHome() {
             ) : (
               <div className="text-sm uppercase opacity-30">No Media Uploaded</div>
             )}
-            <span className="video-caption">MEDIA · {data.masterpiece.descriptionTitle}</span>
+            <span className="video-caption pointer-events-none">MEDIA · {data.masterpiece.descriptionTitle}</span>
           </div>
           <div className="ms-desc">
             <span className="ms-badge">SELECTED WORK · {data.masterpiece.descriptionTitle}</span>
             <div className="ms-title whitespace-pre-line">{data.masterpiece.descriptionSub}</div>
             {data.masterpiece.embedSrc && (
-              <a href={data.masterpiece.embedSrc} target="_blank" rel="noopener noreferrer" className="link-btn">
+              <a
+                href={isYoutubeUrl(data.masterpiece.embedSrc) ? getYoutubeWatchUrl(data.masterpiece.embedSrc) : data.masterpiece.embedSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link-btn"
+              >
                 자세히 보기 →
               </a>
             )}
@@ -371,20 +424,25 @@ function PortfolioHome() {
         </div>
         <div className="actions-grid">
           {data.actions.map((item: any, idx: number) => {
-            const isYoutubeCard = item.mediaType === 'youtube' && item.videoSrc;
-            const isComingSoon = !isYoutubeCard && (!item.href || item.title.toLowerCase().includes('soon'));
-            const isCodeMCard = item.title?.toLowerCase().replace(/\s+/g, '').includes('codem');
+            const safeTitle = item.title || '';
+            const rawYoutubeSrc = normalizeYoutubeHref(item.videoSrc || item.href || '');
+            const isYoutubeCard = item.mediaType === 'youtube' && Boolean(rawYoutubeSrc);
+            const isEmbeddableVideo = isYoutubeCard && isEmbeddableYoutubeVideo(rawYoutubeSrc);
+            const targetHref = isYoutubeCard ? getYoutubeWatchUrl(rawYoutubeSrc) : normalizeYoutubeHref(item.href);
+            const isComingSoon = !isYoutubeCard && (!targetHref || safeTitle.toLowerCase().includes('soon'));
+            const isCodeMCard = safeTitle.toLowerCase().replace(/\s+/g, '').includes('codem');
             const actionImgSrc = isCodeMCard ? mCubeLogo : item.img;
             const cardClass = `card-${(idx % 3) + 1}`;
+            const cardKey = item.id ?? `action-${idx}`;
 
             const cardInner = (
               <>
-                {isYoutubeCard ? (
+                {isEmbeddableVideo ? (
                   <>
                     <iframe
                       className="absolute inset-0 w-full h-full border-0 opacity-35 group-hover:opacity-70 transition-opacity duration-700 pointer-events-auto"
-                      src={getYoutubeEmbedUrl(item.videoSrc)}
-                      title={item.title}
+                      src={getYoutubeEmbedUrl(rawYoutubeSrc)}
+                      title={safeTitle}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
@@ -394,7 +452,7 @@ function PortfolioHome() {
                   <>
                     <img
                       src={actionImgSrc}
-                      alt={item.title}
+                      alt={safeTitle}
                       className="absolute inset-0 w-full h-full object-cover opacity-25 group-hover:scale-105 group-hover:opacity-40 transition-all duration-700 mix-blend-luminosity pointer-events-none"
                       referrerPolicy="no-referrer"
                       onError={(event) => {
@@ -407,23 +465,50 @@ function PortfolioHome() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent pointer-events-none z-0" />
                   </>
                 ) : null}
-                <div className={`relative z-10 flex flex-col justify-end w-full h-full ${isYoutubeCard ? 'pointer-events-none' : ''}`}>
-                  <div className="card-tag">
-                    {isYoutubeCard ? 'PROJECT · WATCH VIDEO' : 'PROJECT · CLICK TO VISIT'}
+                {isEmbeddableVideo ? (
+                  <>
+                    <a
+                      href={targetHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${safeTitle} 유튜브에서 보기`}
+                      className="absolute top-3 right-3 w-11 h-11 z-20 pointer-events-auto"
+                    />
+                    <div className="relative z-10 flex flex-col justify-end w-full h-full pointer-events-none">
+                      <a
+                        href={targetHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pointer-events-auto w-fit group/watch"
+                      >
+                        <div className="card-tag group-hover/watch:text-[#C6FF00] transition-colors">
+                          PROJECT · WATCH VIDEO ↗
+                        </div>
+                        <div className="card-name group-hover/watch:text-[#C6FF00] transition-colors">
+                          {safeTitle}
+                        </div>
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <div className="relative z-10 flex flex-col justify-end w-full h-full">
+                    <div className="card-tag">
+                      {isYoutubeCard ? 'PROJECT · WATCH VIDEO' : 'PROJECT · CLICK TO VISIT'}
+                    </div>
+                    <div className="card-name">{safeTitle}</div>
                   </div>
-                  <div className="card-name">{item.title}</div>
-                </div>
+                )}
               </>
             );
 
             if (isComingSoon) {
               return (
-                <div key={item.id} className="action-card card-4 dim group relative">
+                <div key={cardKey} className="action-card card-4 dim group relative">
                   {actionImgSrc && (
                     <>
                       <img
                         src={actionImgSrc}
-                        alt={item.title}
+                        alt={safeTitle}
                         className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity pointer-events-none"
                         referrerPolicy="no-referrer"
                         onError={(event) => {
@@ -438,16 +523,16 @@ function PortfolioHome() {
                   )}
                   <div className="relative z-10 flex flex-col justify-end w-full h-full">
                     <div className="card-tag">PROJECT · COMING SOON</div>
-                    <div className="card-name">{item.title}</div>
+                    <div className="card-name">{safeTitle}</div>
                   </div>
                 </div>
               );
             }
 
-            if (isYoutubeCard) {
+            if (isEmbeddableVideo) {
               return (
                 <div
-                  key={item.id}
+                  key={cardKey}
                   className={`action-card ${cardClass} youtube-card group relative`}
                 >
                   {cardInner}
@@ -455,13 +540,15 @@ function PortfolioHome() {
               );
             }
 
+            const isExternal = isYoutubeCard || item.external || targetHref.startsWith('http');
+
             return (
               <a
-                key={item.id}
-                href={item.href}
-                target={item.external ? "_blank" : "_self"}
-                rel={item.external ? "noopener noreferrer" : ""}
-                className={`action-card ${cardClass} group relative`}
+                key={cardKey}
+                href={targetHref}
+                target={isExternal ? "_blank" : "_self"}
+                rel={isExternal ? "noopener noreferrer" : ""}
+                className={`action-card ${cardClass} ${isYoutubeCard ? 'youtube-card' : ''} group relative`}
               >
                 {cardInner}
               </a>

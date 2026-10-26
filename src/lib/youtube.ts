@@ -7,33 +7,64 @@ export function isYoutubeUrl(url: string): boolean {
 }
 
 /**
- * Converts any standard or shortened YouTube video URL into its corresponding embed URL.
- * If the URL is already an embed URL, it returns it unchanged.
- * If the URL is not a valid YouTube URL, it returns the original URL.
+ * Extracts the 11-character YouTube video ID from various YouTube URL formats
+ * (watch?v=, youtu.be/, embed/, shorts/, live/, v/).
+ * Returns null if the URL is a channel/handle URL or not a valid video URL.
+ */
+export function extractYoutubeVideoId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  const patterns = [
+    /(?:youtube\.com\/(?:watch\?.*v=|embed\/|v\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Checks whether a URL points to a specific embeddable YouTube video (has an 11-char video ID).
+ */
+export function isEmbeddableYoutubeVideo(url: string): boolean {
+  return extractYoutubeVideoId(url) !== null;
+}
+
+/**
+ * Converts any standard, shorts, live, or shortened YouTube video URL into its embed URL.
+ * If the URL is not an embeddable video URL (e.g. a channel URL), returns the original trimmed URL.
  */
 export function getYoutubeEmbedUrl(url: string): string {
   if (!url) return '';
-  
   const trimmed = url.trim();
+  const videoId = extractYoutubeVideoId(trimmed);
 
-  // If it's already an embed URL, return it
-  if (trimmed.includes('youtube.com/embed/')) {
-    return trimmed;
-  }
-  
-  // Regex to extract video ID from various YouTube URL formats:
-  // - https://www.youtube.com/watch?v=VIDEO_ID
-  // - https://youtu.be/VIDEO_ID
-  // - https://www.youtube.com/v/VIDEO_ID
-  // - youtube.com/watch?v=VIDEO_ID
-  // - youtu.be/VIDEO_ID
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = trimmed.match(regExp);
-  
-  if (match && match[2].length === 11) {
-    const videoId = match[2];
+  if (videoId) {
     return `https://www.youtube.com/embed/${videoId}`;
   }
-  
+
+  return trimmed;
+}
+
+/**
+ * Converts any YouTube video or embed URL into a standard clickable watch URL.
+ * If it's a channel URL (e.g., https://www.youtube.com/@CodeM_Studio_AI11), returns it as-is.
+ */
+export function getYoutubeWatchUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const videoId = extractYoutubeVideoId(trimmed);
+
+  if (videoId) {
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+
   return trimmed;
 }

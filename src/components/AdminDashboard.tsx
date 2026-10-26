@@ -13,7 +13,18 @@ import {
   ArrowLeft, LogOut, Save, Plus, Trash2, ArrowUp, ArrowDown, 
   Image as ImageIcon, Youtube, Link as LinkIcon, Cpu, Loader, AlertTriangle
 } from 'lucide-react';
-import { isYoutubeUrl, getYoutubeEmbedUrl } from '../lib/youtube';
+import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
+import mCubeLogo from '../assets/m_cube_logo.png';
+
+const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
+
+function normalizeYoutubeHref(url?: string): string {
+  if (!url) return '';
+  if (url.includes('youtube.com/@do-daham')) {
+    return DEFAULT_YOUTUBE_CHANNEL_URL;
+  }
+  return url;
+}
 
 interface Project {
   id: number;
@@ -23,6 +34,42 @@ interface Project {
   mediaType?: 'image' | 'youtube';
   videoSrc?: string;
   external?: boolean;
+}
+
+const DEFAULT_ACTIONS: Project[] = [
+  { id: 1, title: 'CodeM Studio', href: DEFAULT_YOUTUBE_CHANNEL_URL, img: mCubeLogo, mediaType: 'image', videoSrc: '', external: true },
+  { id: 2, title: 'Mood Brew', href: 'https://coffee.do-daham.com/', img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', mediaType: 'image', videoSrc: '', external: true },
+  { id: 3, title: 'MechFlow', href: 'https://machine.do-daham.com', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', mediaType: 'image', videoSrc: '', external: true },
+  { id: 4, title: 'Coming Soon...', href: '#', img: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', mediaType: 'image', videoSrc: '', external: false }
+];
+
+function normalizeActions(rawActions: any): Project[] {
+  if (!Array.isArray(rawActions)) {
+    return DEFAULT_ACTIONS.map(item => ({ ...item }));
+  }
+  const usedIds = new Set<number>();
+  return rawActions.map((item: any, idx: number) => {
+    let candidateId = typeof item?.id === 'number' && !Number.isNaN(item.id)
+      ? item.id
+      : Number(item?.id) || (Date.now() + idx);
+    while (usedIds.has(candidateId)) {
+      candidateId += 1;
+    }
+    usedIds.add(candidateId);
+
+    const normalizedHref = normalizeYoutubeHref(item?.href || '');
+    const normalizedVideoSrc = normalizeYoutubeHref(item?.videoSrc || '');
+
+    return {
+      id: candidateId,
+      title: item?.title ?? '',
+      href: normalizedHref,
+      img: item?.img ?? '',
+      mediaType: item?.mediaType === 'youtube' ? 'youtube' : 'image',
+      videoSrc: normalizedVideoSrc,
+      external: typeof item?.external === 'boolean' ? item.external : normalizedHref.startsWith('http')
+    };
+  });
 }
 
 interface PortfolioData {
@@ -97,22 +144,41 @@ export default function AdminDashboard() {
         const raw = docSnap.data().data;
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
         
-        // Match default schema structure
+        // Match default schema structure and guarantee unique project IDs
         setPortfolioData({
-          userName: parsed.userName || '',
-          userRole: parsed.userRole || '',
+          userName: parsed.userName || '성진배',
+          userRole: parsed.userRole || 'AI Creator & Vibe Coder',
           manifesto: {
-            lines: parsed.manifesto?.lines || [''],
-            highlight: parsed.manifesto?.highlight || ''
+            lines: Array.isArray(parsed.manifesto?.lines) && parsed.manifesto.lines.length > 0
+              ? parsed.manifesto.lines
+              : ['질문을 던지고,', '코드를 엮어,', '새로운 가치를 만듭니다.', '상상을 현실로 구현하는 바이브 코더.'],
+            highlight: parsed.manifesto?.highlight || '상상을 현실로 구현하는 바이브 코더.'
           },
           masterpiece: {
-            title: parsed.masterpiece?.title || '',
-            descriptionTitle: parsed.masterpiece?.descriptionTitle || '',
+            title: parsed.masterpiece?.title || 'AI Media Art - The Wave',
+            descriptionTitle: parsed.masterpiece?.descriptionTitle || '생성형 AI와 사운드의 결합으로 탄생한 감각적 비주얼 필름',
             descriptionSub: parsed.masterpiece?.descriptionSub || '',
-            embedSrc: parsed.masterpiece?.embedSrc || ''
+            embedSrc: parsed.masterpiece?.embedSrc || 'https://www.youtube.com/embed/P-b7WV-obKs'
           },
-          actions: parsed.actions || [],
-          activities: parsed.activities || []
+          actions: normalizeActions(parsed.actions),
+          activities: Array.isArray(parsed.activities) ? parsed.activities : []
+        });
+      } else {
+        setPortfolioData({
+          userName: '성진배',
+          userRole: 'AI Creator & Vibe Coder',
+          manifesto: {
+            lines: ['질문을 던지고,', '코드를 엮어,', '새로운 가치를 만듭니다.', '상상을 현실로 구현하는 바이브 코더.'],
+            highlight: '상상을 현실로 구현하는 바이브 코더.'
+          },
+          masterpiece: {
+            title: 'AI Media Art - The Wave',
+            descriptionTitle: '생성형 AI와 사운드의 결합으로 탄생한 감각적 비주얼 필름',
+            descriptionSub: '',
+            embedSrc: 'https://www.youtube.com/embed/P-b7WV-obKs'
+          },
+          actions: normalizeActions(DEFAULT_ACTIONS),
+          activities: []
         });
       }
     } catch (e) {
@@ -232,35 +298,49 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleActionImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleActionImageUpload = async (projectId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingMedia(prev => ({ ...prev, [`action-${index}`]: true }));
+    const uploadKey = `action-${projectId}`;
+    setUploadingMedia(prev => ({ ...prev, [uploadKey]: true }));
     try {
-      const url = await uploadImage(file, `action_${index}`);
-      updateAction(index, 'img', url);
+      const url = await uploadImage(file, `action_${projectId}`);
+      setPortfolioData(prev => ({
+        ...prev,
+        actions: prev.actions.map(item =>
+          item.id === projectId ? { ...item, img: url } : item
+        )
+      }));
     } catch (err: any) {
       alert('이미지 업로드 실패: ' + err.message);
     } finally {
-      setUploadingMedia(prev => ({ ...prev, [`action-${index}`]: false }));
+      setUploadingMedia(prev => ({ ...prev, [uploadKey]: false }));
     }
   };
 
   // 6. Project Card Handlers
   const addActionCard = () => {
-    const newProject: Project = {
-      id: Date.now(),
-      title: '',
-      href: '',
-      img: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-      mediaType: 'image',
-      videoSrc: ''
-    };
-    setPortfolioData(prev => ({
-      ...prev,
-      actions: [...prev.actions, newProject]
-    }));
+    setPortfolioData(prev => {
+      const existingIds = new Set(prev.actions.map(a => a.id));
+      let nextId = Date.now();
+      while (existingIds.has(nextId)) {
+        nextId += 1;
+      }
+      const newProject: Project = {
+        id: nextId,
+        title: '',
+        href: '',
+        img: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+        mediaType: 'image',
+        videoSrc: '',
+        external: false
+      };
+      return {
+        ...prev,
+        actions: [...prev.actions, newProject]
+      };
+    });
   };
 
   const removeActionCard = (index: number) => {
@@ -272,6 +352,7 @@ export default function AdminDashboard() {
 
   const updateAction = (index: number, field: keyof Project, val: string) => {
     setPortfolioData(prev => {
+      if (index < 0 || index >= prev.actions.length) return prev;
       const newActions = [...prev.actions];
       newActions[index] = { ...newActions[index], [field]: val } as Project;
       return { ...prev, actions: newActions };
@@ -279,22 +360,22 @@ export default function AdminDashboard() {
   };
 
   const moveActionUp = (index: number) => {
-    if (index === 0) return;
     setPortfolioData(prev => {
+      if (index <= 0 || index >= prev.actions.length) return prev;
       const newActions = [...prev.actions];
-      const temp = newActions[index];
-      newActions[index] = newActions[index - 1];
+      const temp = { ...newActions[index] };
+      newActions[index] = { ...newActions[index - 1] };
       newActions[index - 1] = temp;
       return { ...prev, actions: newActions };
     });
   };
 
   const moveActionDown = (index: number) => {
-    if (index === portfolioData.actions.length - 1) return;
     setPortfolioData(prev => {
+      if (index < 0 || index >= prev.actions.length - 1) return prev;
       const newActions = [...prev.actions];
-      const temp = newActions[index];
-      newActions[index] = newActions[index + 1];
+      const temp = { ...newActions[index] };
+      newActions[index] = { ...newActions[index + 1] };
       newActions[index + 1] = temp;
       return { ...prev, actions: newActions };
     });
@@ -311,6 +392,37 @@ export default function AdminDashboard() {
     setSaveSuccess(false);
 
     try {
+      const docRef = doc(db, 'portfolios', 'admin_default');
+      const existingSnap = await getDoc(docRef);
+      let latestActivities = portfolioData.activities || [];
+      if (existingSnap.exists()) {
+        try {
+          const rawExisting = existingSnap.data().data;
+          const parsedExisting = typeof rawExisting === 'string' ? JSON.parse(rawExisting) : rawExisting;
+          if (Array.isArray(parsedExisting?.activities)) {
+            latestActivities = parsedExisting.activities;
+          }
+        } catch {
+          // fallback to state activities
+        }
+      }
+
+      const normalizedActions = normalizeActions(portfolioData.actions).map(a => {
+        const cleanedHref = normalizeYoutubeHref((a.href || '').trim());
+        const cleanedVideoSrc = normalizeYoutubeHref((a.videoSrc || '').trim());
+        return {
+          id: a.id,
+          title: a.title || '',
+          href: cleanedHref,
+          img: a.img || '',
+          mediaType: a.mediaType === 'youtube' ? 'youtube' as const : 'image' as const,
+          videoSrc: a.mediaType === 'youtube' && cleanedVideoSrc
+            ? (isEmbeddableYoutubeVideo(cleanedVideoSrc) ? getYoutubeEmbedUrl(cleanedVideoSrc) : cleanedVideoSrc)
+            : (cleanedVideoSrc || ''),
+          external: cleanedHref ? cleanedHref.startsWith('http') : false
+        };
+      });
+
       const cleanData: PortfolioData = {
         userName: portfolioData.userName,
         userRole: portfolioData.userRole,
@@ -322,21 +434,21 @@ export default function AdminDashboard() {
           title: portfolioData.masterpiece.title,
           descriptionTitle: portfolioData.masterpiece.descriptionTitle,
           descriptionSub: portfolioData.masterpiece.descriptionSub,
-          embedSrc: isYoutubeUrl(portfolioData.masterpiece.embedSrc)
+          embedSrc: isEmbeddableYoutubeVideo(portfolioData.masterpiece.embedSrc)
             ? getYoutubeEmbedUrl(portfolioData.masterpiece.embedSrc)
             : portfolioData.masterpiece.embedSrc
         },
-        actions: portfolioData.actions.map(a => ({
-          ...a,
-          videoSrc: a.mediaType === 'youtube' && a.videoSrc
-            ? getYoutubeEmbedUrl(a.videoSrc)
-            : (a.videoSrc || ''),
-          external: a.href ? a.href.startsWith('http') : false
-        })),
-        activities: portfolioData.activities || []
+        actions: normalizedActions,
+        activities: latestActivities
       };
 
-      await setDoc(doc(db, 'portfolios', 'admin_default'), {
+      setPortfolioData(prev => ({
+        ...prev,
+        actions: normalizedActions,
+        activities: latestActivities
+      }));
+
+      await setDoc(docRef, {
         user_id: user?.uid,
         data: JSON.stringify(cleanData),
         updated_at: new Date().toISOString()
@@ -632,7 +744,7 @@ export default function AdminDashboard() {
                 {portfolioData.masterpiece.embedSrc && (
                   <div className="mt-6 p-4 bg-black/40 border border-[#f4f4f0]/15 inline-block">
                     <p className="text-[10px] font-bold text-[#ccff00] uppercase tracking-wider mb-2">Media Preview</p>
-                    {isYoutubeUrl(portfolioData.masterpiece.embedSrc) ? (
+                    {isEmbeddableYoutubeVideo(portfolioData.masterpiece.embedSrc) ? (
                       <div className="w-[180px] aspect-video">
                         <iframe 
                           src={getYoutubeEmbedUrl(portfolioData.masterpiece.embedSrc)} 
@@ -661,8 +773,9 @@ export default function AdminDashboard() {
                 </h2>
                 
                 <button
+                  type="button"
                   onClick={addActionCard}
-                  className="bg-[#ccff00] text-black font-display font-bold text-xs uppercase px-4 py-2 hover:bg-white transition-colors flex items-center gap-1.5 shadow-[2px_2px_0_#fff]"
+                  className="bg-[#ccff00] text-black font-display font-bold text-xs uppercase px-4 py-2 hover:bg-white transition-colors flex items-center gap-1.5 shadow-[2px_2px_0_#fff] cursor-pointer"
                 >
                   <Plus size={14} /> Add Project
                 </button>
@@ -672,33 +785,38 @@ export default function AdminDashboard() {
                 {portfolioData.actions.map((project, idx) => (
                   <div key={project.id} className="border border-[#f4f4f0]/15 bg-black/30 p-5 relative group">
                     {/* Control Buttons */}
-                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
                       <button 
                         type="button"
+                        title="위로 이동"
                         onClick={() => moveActionUp(idx)} 
                         disabled={idx === 0}
-                        className="text-white/40 hover:text-[#ccff00] disabled:opacity-20 transition-all p-1"
+                        className="border border-[#f4f4f0]/20 bg-black/80 text-white/70 hover:text-[#ccff00] hover:border-[#ccff00] disabled:opacity-20 disabled:pointer-events-none transition-all p-1.5 cursor-pointer"
                       >
-                        <ArrowUp size={16} />
+                        <ArrowUp size={15} />
                       </button>
                       <button 
                         type="button"
+                        title="아래로 이동"
                         onClick={() => moveActionDown(idx)} 
                         disabled={idx === portfolioData.actions.length - 1}
-                        className="text-white/40 hover:text-[#ccff00] disabled:opacity-20 transition-all p-1"
+                        className="border border-[#f4f4f0]/20 bg-black/80 text-white/70 hover:text-[#ccff00] hover:border-[#ccff00] disabled:opacity-20 disabled:pointer-events-none transition-all p-1.5 cursor-pointer"
                       >
-                        <ArrowDown size={16} />
+                        <ArrowDown size={15} />
                       </button>
                       <button 
                         type="button"
+                        title="프로젝트 삭제"
                         onClick={() => removeActionCard(idx)}
-                        className="text-red-500 hover:text-red-400 transition-colors p-1 ml-2"
+                        className="border border-red-500/30 bg-black/80 text-red-500 hover:text-red-400 hover:border-red-400 transition-colors p-1.5 ml-1 cursor-pointer"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
 
-                    <div className="text-xs font-mono font-bold text-[#ccff00] opacity-40 uppercase tracking-widest mb-4">Project Card #{idx + 1}</div>
+                    <div className="text-xs font-mono font-bold text-[#ccff00] opacity-60 uppercase tracking-widest mb-4">
+                      Project Card #{idx + 1} {project.title ? `— ${project.title}` : ''}
+                    </div>
 
                     {/* Media Type Toggle */}
                     <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#f4f4f0]/10">
@@ -707,14 +825,14 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           onClick={() => updateAction(idx, 'mediaType', 'image')}
-                          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${(!project.mediaType || project.mediaType === 'image') ? 'bg-[#ccff00] text-black' : 'text-[#f4f4f0]/50 hover:text-[#f4f4f0]'}`}
+                          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${(!project.mediaType || project.mediaType === 'image') ? 'bg-[#ccff00] text-black' : 'text-[#f4f4f0]/50 hover:text-[#f4f4f0]'}`}
                         >
                           Image Link
                         </button>
                         <button
                           type="button"
                           onClick={() => updateAction(idx, 'mediaType', 'youtube')}
-                          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${project.mediaType === 'youtube' ? 'bg-[#ccff00] text-black' : 'text-[#f4f4f0]/50 hover:text-[#f4f4f0]'}`}
+                          className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${project.mediaType === 'youtube' ? 'bg-[#ccff00] text-black' : 'text-[#f4f4f0]/50 hover:text-[#f4f4f0]'}`}
                         >
                           YouTube Video
                         </button>
@@ -727,7 +845,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] font-bold opacity-45 uppercase tracking-[0.15em]">Project Title</label>
                           <input
-                            value={project.title}
+                            value={project.title || ''}
                             onChange={e => updateAction(idx, 'title', e.target.value)}
                             placeholder="e.g. MechFlow YouTube Video"
                             className="bg-black border border-[#f4f4f0]/15 p-2.5 text-white font-bold outline-none focus:border-[#ccff00] text-xs transition-colors"
@@ -735,12 +853,12 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] font-bold opacity-45 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                            <Youtube size={12} className="text-red-500" /> YouTube Embed URL
+                            <Youtube size={12} className="text-red-500" /> YouTube Video / Channel URL
                           </label>
                           <input
                             value={project.videoSrc || ''}
                             onChange={e => updateAction(idx, 'videoSrc', e.target.value)}
-                            placeholder="e.g. https://www.youtube.com/embed/P-b7WV-obKs"
+                            placeholder="e.g. https://www.youtube.com/watch?v=P-b7WV-obKs"
                             className="bg-black border border-[#f4f4f0]/15 p-2.5 text-white font-bold outline-none focus:border-[#ccff00] text-xs transition-colors"
                           />
                         </div>
@@ -752,7 +870,7 @@ export default function AdminDashboard() {
                           <div className="flex flex-col gap-1">
                             <label className="text-[10px] font-bold opacity-45 uppercase tracking-[0.15em]">Project Title</label>
                             <input
-                              value={project.title}
+                              value={project.title || ''}
                               onChange={e => updateAction(idx, 'title', e.target.value)}
                               placeholder="e.g. MechFlow"
                               className="bg-black border border-[#f4f4f0]/15 p-2.5 text-white font-bold outline-none focus:border-[#ccff00] text-xs transition-colors"
@@ -761,7 +879,7 @@ export default function AdminDashboard() {
                           <div className="flex flex-col gap-1">
                             <label className="text-[10px] font-bold opacity-45 uppercase tracking-[0.15em]">Redirect URL / Link</label>
                             <input
-                              value={project.href}
+                              value={project.href || ''}
                               onChange={e => updateAction(idx, 'href', e.target.value)}
                               placeholder="e.g. https://machine.do-daham.com"
                               className="bg-black border border-[#f4f4f0]/15 p-2.5 text-white font-bold outline-none focus:border-[#ccff00] text-xs transition-colors"
@@ -773,7 +891,7 @@ export default function AdminDashboard() {
                           <div className="flex-1 flex flex-col gap-1 w-full">
                             <label className="text-[10px] font-bold opacity-45 uppercase tracking-[0.15em]">Image URL</label>
                             <input
-                              value={project.img}
+                              value={project.img || ''}
                               onChange={e => updateAction(idx, 'img', e.target.value)}
                               placeholder="e.g. https://images.unsplash.com/..."
                               className="bg-black border border-[#f4f4f0]/15 p-2.5 text-white font-bold outline-none focus:border-[#ccff00] text-xs transition-colors"
@@ -781,15 +899,15 @@ export default function AdminDashboard() {
                           </div>
                           
                           <div className="w-full sm:w-auto">
-                            <label className={`inline-block w-full text-center px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors border border-[#f4f4f0]/20 hover:border-[#ccff00] hover:text-[#ccff00] whitespace-nowrap bg-black ${uploadingMedia[`action-${idx}`] ? 'opacity-50' : ''}`}>
-                              {uploadingMedia[`action-${idx}`] ? <Loader className="animate-spin inline mr-1" size={10} /> : <ImageIcon size={10} className="inline mr-1" />}
-                              {uploadingMedia[`action-${idx}`] ? 'Uploading...' : 'Upload Image'}
+                            <label className={`inline-block w-full text-center px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors border border-[#f4f4f0]/20 hover:border-[#ccff00] hover:text-[#ccff00] whitespace-nowrap bg-black ${uploadingMedia[`action-${project.id}`] ? 'opacity-50' : ''}`}>
+                              {uploadingMedia[`action-${project.id}`] ? <Loader className="animate-spin inline mr-1" size={10} /> : <ImageIcon size={10} className="inline mr-1" />}
+                              {uploadingMedia[`action-${project.id}`] ? 'Uploading...' : 'Upload Image'}
                               <input
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                disabled={uploadingMedia[`action-${idx}`]}
-                                onChange={e => handleActionImageUpload(idx, e)}
+                                disabled={uploadingMedia[`action-${project.id}`]}
+                                onChange={e => handleActionImageUpload(project.id, e)}
                               />
                             </label>
                           </div>
