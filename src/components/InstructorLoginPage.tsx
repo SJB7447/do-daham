@@ -128,6 +128,13 @@ export default function InstructorLoginPage() {
               </button>
               <button
                 type="button"
+                onClick={() => navigate('/instructor/classes')}
+                className="hero-cta-secondary w-full justify-center"
+              >
+                내 수업 일정 관리 · 정리 →
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('/instructor/classes/new')}
                 className="hero-cta-secondary w-full justify-center"
               >

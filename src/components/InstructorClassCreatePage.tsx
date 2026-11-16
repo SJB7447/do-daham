@@ -174,6 +174,7 @@ export default function InstructorClassCreatePage() {
 
         <div className="nav-links">
           <Link to="/instructor/profile">내 프로필</Link>
+          <Link to="/instructor/classes">내 수업 관리</Link>
           <Link to="/instructor/classes/new" className="nav-class-link">
             <span className="nav-class-dot" aria-hidden="true" />
             수업 등록

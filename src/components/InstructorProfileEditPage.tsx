@@ -242,6 +242,7 @@ export default function InstructorProfileEditPage() {
             <span className="nav-class-dot" aria-hidden="true" />
             내 프로필
           </Link>
+          <Link to="/instructor/classes">내 수업 관리</Link>
           <Link to="/instructor/classes/new">수업 등록</Link>
           <Link to="/class/instructors">공개 강사진</Link>
           <Link to="/class/schedule">일정표</Link>

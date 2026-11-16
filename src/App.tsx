@@ -12,6 +12,7 @@ import SchedulePage from './components/SchedulePage';
 import JoinInvitePage from './components/JoinInvitePage';
 import InstructorProfileEditPage from './components/InstructorProfileEditPage';
 import InstructorClassCreatePage from './components/InstructorClassCreatePage';
+import InstructorClassesManagePage from './components/InstructorClassesManagePage';
 import InstructorLoginPage from './components/InstructorLoginPage';
 import ProjectPage from './components/ProjectPage';
 import { CrystalCube } from './components/CrystalCube';
@@ -111,6 +112,12 @@ function RouteScrollHandler() {
         title: '강사 프로필 편집 | DO-DAHAM CLASS',
         description: 'DO-DAHAM CLASS 강사 프로필 편집',
         url: 'https://do-daham.com/instructor/profile',
+        robots: 'noindex, nofollow'
+      },
+      '/instructor/classes': {
+        title: '내 수업 일정 관리 | DO-DAHAM CLASS',
+        description: 'DO-DAHAM CLASS 강사 본인 수업 일정 관리',
+        url: 'https://do-daham.com/instructor/classes',
         robots: 'noindex, nofollow'
       },
       '/instructor/classes/new': {
@@ -786,6 +793,7 @@ export default function App() {
         <Route path="/instructor" element={<InstructorLoginPage />} />
         <Route path="/instructor/login" element={<InstructorLoginPage />} />
         <Route path="/instructor/profile" element={<InstructorProfileEditPage />} />
+        <Route path="/instructor/classes" element={<InstructorClassesManagePage />} />
         <Route path="/instructor/classes/new" element={<InstructorClassCreatePage />} />
         <Route path="/activity" element={<ActivityPage />} />
         {/* 워크숍 전면 수정 기간 동안 일반 사용자 접근 차단 (메인으로 리다이렉트) */}

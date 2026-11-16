@@ -39,10 +39,10 @@ const PUBLIC_MENU_ITEMS: MenuItem[] = [
 
 const INSTRUCTOR_MENU_ITEMS: MenuItem[] = [
   { num: '01', label: '내 프로필', sub: '프로필 편집 · 승인 요청', to: '/instructor/profile' },
-  { num: '02', label: '수업 등록', sub: '일정 · 강의 계획 작성', to: '/instructor/classes/new' },
-  { num: '03', label: '공개 강사진', sub: '강사진 페이지 확인', to: '/class/instructors' },
-  { num: '04', label: '수업 일정표', sub: '달력 · 신청 현황', to: '/class/schedule' },
-  { num: '05', label: '홈으로', sub: 'DO-DAHAM 메인', to: '/' }
+  { num: '02', label: '내 수업 관리', sub: '일정 · 회차 · 장소 정리', to: '/instructor/classes' },
+  { num: '03', label: '수업 등록', sub: '새 수업 · 강의 계획 작성', to: '/instructor/classes/new' },
+  { num: '04', label: '공개 강사진', sub: '강사진 페이지 확인', to: '/class/instructors' },
+  { num: '05', label: '수업 일정표', sub: '달력 · 신청 현황', to: '/class/schedule' }
 ];
 
 export function MobileMenuOverlay({
