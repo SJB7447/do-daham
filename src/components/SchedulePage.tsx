@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, MapPin, Users } from 'lucide-react';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
+import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
@@ -118,6 +119,13 @@ export default function SchedulePage() {
   const [instructorFilter, setInstructorFilter] = useState<string>('ALL');
   const [selectedDay, setSelectedDay] = useState<number | null>(1);
   const [monthOffset, setMonthOffset] = useState<0 | 1>(0); // 0: 2026.12, 1: 2027.01
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSiteSettings);
+  }, []);
+
+  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
 
   const currentYear = monthOffset === 0 ? 2026 : 2027;
   const currentMonthIndex = monthOffset === 0 ? 11 : 0; // 11 = Dec, 0 = Jan
@@ -167,7 +175,11 @@ export default function SchedulePage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
       {/* Top Navigation */}
-      <SiteHeader badge="CLASS" ctaLabel="1기 사전 신청 →" ctaHref={APPLY_FORM_URL} />
+      <SiteHeader
+        badge="CLASS"
+        ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
+        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+      />
 
       {/* Page Header */}
       <header className="pt-28 sm:pt-36 pb-10 sm:pb-14 px-[22px] sm:px-8 lg:px-14 border-b border-white/[0.08]">
@@ -576,14 +588,25 @@ export default function SchedulePage() {
                             수강료 계산기 →
                           </Link>
                         )}
-                        <a
-                          href={APPLY_FORM_URL}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hero-cta"
-                        >
-                          사전 신청하기 <ExternalLink size={14} />
-                        </a>
+                        {canApply ? (
+                          <a
+                            href={siteSettings.classApplicationFormUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hero-cta"
+                          >
+                            사전 신청하기 <ExternalLink size={14} />
+                          </a>
+                        ) : (
+                          <a
+                            href={siteSettings.classInquiryFormUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hero-cta"
+                          >
+                            신청 준비 중 (문의) <ExternalLink size={14} />
+                          </a>
+                        )}
                       </div>
                     </div>
                   </article>

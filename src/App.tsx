@@ -16,6 +16,7 @@ import ProjectPage from './components/ProjectPage';
 import { CrystalCube } from './components/CrystalCube';
 import { SiteHeader } from './components/SiteHeader';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from './lib/classMetrics';
+import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from './lib/siteSettings';
 import { Settings, Check, Copy } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
 import { isYoutubeUrl, getYoutubeEmbedUrl, getYoutubeWatchUrl, isEmbeddableYoutubeVideo } from './lib/youtube';
@@ -198,6 +199,7 @@ function PortfolioHome() {
   const [scrolled, setScrolled] = useState(false);
   const [kakaoCopied, setKakaoCopied] = useState(false);
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   const handleCopyKakao = async () => {
     try {
@@ -274,6 +276,9 @@ function PortfolioHome() {
             },
             actions: normalizedActions
           });
+          if (parsed.siteSettings) {
+            setSiteSettings(normalizeSiteSettings(parsed.siteSettings));
+          }
         }
       } catch (err) {
         console.error("Firestore read error, using local defaults:", err);
@@ -672,16 +677,39 @@ function PortfolioHome() {
               <div className="contact-card-kicker">PROJECT · 제작 의뢰</div>
               <h3>AI 영상 · 홈페이지</h3>
               <p>광고·숏폼·단편 영상, 사업용 홈페이지와 상세페이지. 범위부터 편하게 말씀해 주세요.</p>
-              <button
-                type="button"
-                onClick={handleCopyKakao}
-                className="hero-cta cursor-pointer border-0"
-              >
-                {kakaoCopied ? <Check size={15} /> : <Copy size={15} />}
-                <span>
-                  {kakaoCopied ? '카카오톡 ID 복사됨 (@AI다함스튜디오)' : '카카오톡 @AI다함스튜디오 복사 →'}
-                </span>
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {siteSettings.kakaoUrl ? (
+                  <a
+                    href={siteSettings.kakaoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta"
+                  >
+                    카카오톡 바로 문의 →
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCopyKakao}
+                    className="hero-cta cursor-pointer border-0"
+                  >
+                    {kakaoCopied ? <Check size={15} /> : <Copy size={15} />}
+                    <span>
+                      {kakaoCopied
+                        ? `카카오톡 ID 복사됨 (${siteSettings.kakaoHandle})`
+                        : `카카오톡 ${siteSettings.kakaoHandle} 복사 →`}
+                    </span>
+                  </button>
+                )}
+                <a
+                  href={siteSettings.projectInquiryFormUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-cta-secondary"
+                >
+                  제작 문의 폼 →
+                </a>
+              </div>
             </div>
 
             <div className="contact-card">
@@ -690,7 +718,7 @@ function PortfolioHome() {
               <p>대상과 목적에 맞춰 커리큘럼을 맞춤 구성합니다. 접수 후 카카오톡이나 유선으로 일정과 인원을 협의합니다.</p>
               <div className="flex flex-wrap items-center gap-3">
                 <a
-                  href={APPLY_FORM_URL}
+                  href={siteSettings.classInquiryFormUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hero-cta-secondary"

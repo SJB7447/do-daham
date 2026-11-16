@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, Copy } from 'lucide-react';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
+import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
@@ -32,10 +33,15 @@ const PROCESS_STEPS = [
 
 export default function ProjectPage() {
   const [kakaoCopied, setKakaoCopied] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSiteSettings);
+  }, []);
 
   const handleCopyKakao = async () => {
     try {
-      await navigator.clipboard.writeText('@AI다함스튜디오');
+      await navigator.clipboard.writeText(siteSettings.kakaoHandle);
     } finally {
       setKakaoCopied(true);
       window.setTimeout(() => setKakaoCopied(false), 2200);
@@ -188,17 +194,30 @@ export default function ProjectPage() {
             <div className="contact-card primary">
               <div className="contact-card-kicker">FAST CONSULTATION</div>
               <h3>카카오톡으로 바로 상담</h3>
-              <p>채널 ID를 복사해 카카오톡에서 검색하시면 디렉터와 1:1로 빠르게 상담하실 수 있습니다.</p>
-              <button
-                type="button"
-                onClick={handleCopyKakao}
-                className="hero-cta cursor-pointer border-0"
-              >
-                {kakaoCopied ? <Check size={15} /> : <Copy size={15} />}
-                <span>
-                  {kakaoCopied ? '카카오톡 ID 복사됨 (@AI다함스튜디오)' : '카카오톡 @AI다함스튜디오 복사 →'}
-                </span>
-              </button>
+              <p>카카오톡 채널로 연결하시면 디렉터와 1:1로 빠르게 상담하실 수 있습니다.</p>
+              {siteSettings.kakaoUrl ? (
+                <a
+                  href={siteSettings.kakaoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-cta"
+                >
+                  카카오톡 바로 문의 →
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCopyKakao}
+                  className="hero-cta cursor-pointer border-0"
+                >
+                  {kakaoCopied ? <Check size={15} /> : <Copy size={15} />}
+                  <span>
+                    {kakaoCopied
+                      ? `카카오톡 ID 복사됨 (${siteSettings.kakaoHandle})`
+                      : `카카오톡 ${siteSettings.kakaoHandle} 복사 →`}
+                  </span>
+                </button>
+              )}
             </div>
 
             <div className="contact-card">
@@ -207,12 +226,12 @@ export default function ProjectPage() {
               <p>제작 분야, 희망 납기, 참고 링크를 폼으로 남겨주시면 확인 후 연락드립니다.</p>
               <div className="flex flex-wrap gap-3">
                 <a
-                  href={APPLY_FORM_URL}
+                  href={siteSettings.projectInquiryFormUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hero-cta-secondary"
                 >
-                  문의 폼 작성 →
+                  제작 문의 폼 작성 →
                 </a>
                 <Link to="/" className="hero-cta-text">
                   <ArrowLeft size={14} />

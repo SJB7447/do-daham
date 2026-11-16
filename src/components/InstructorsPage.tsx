@@ -4,6 +4,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Calendar, CheckCircle2, ExternalLink, Sparkles, UserPlus, X } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { BASE_LECTURE_HOURS, BASE_STUDENTS } from '../lib/classMetrics';
+import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 
@@ -129,6 +130,13 @@ export default function InstructorsPage() {
   const [dayFilter, setDayFilter] = useState<DayKey>('ALL');
   const [selectedInstructor, setSelectedInstructor] = useState<InstructorProfile | null>(null);
   const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSiteSettings);
+  }, []);
+
+  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
 
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const modalCloseRef = useRef<HTMLButtonElement>(null);
@@ -228,7 +236,11 @@ export default function InstructorsPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
       {/* Top Navigation */}
-      <SiteHeader badge="CLASS" ctaLabel="1기 사전 신청 →" ctaHref={APPLY_FORM_URL} />
+      <SiteHeader
+        badge="CLASS"
+        ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
+        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+      />
 
       {/* Page Hero */}
       <header className="pt-28 sm:pt-36 pb-12 sm:pb-16 px-[22px] sm:px-8 lg:px-14 border-b border-white/[0.08]">

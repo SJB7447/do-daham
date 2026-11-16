@@ -5,6 +5,7 @@ import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import StudentShowcaseSection from './StudentShowcaseSection';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
+import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 const MIN_TO_OPEN = 1;
@@ -65,9 +66,11 @@ export default function ClassPage() {
   const [headcount, setHeadcount] = useState<number>(12);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
     fetchLiveClassMetrics().then(setMetrics);
+    fetchSiteSettings().then(setSiteSettings);
   }, []);
 
   const pricing = useMemo(() => {
@@ -100,10 +103,16 @@ export default function ClassPage() {
     return { perSession, total, smallTotal, saved, hint, activeTierId, tierLabel };
   }, [headcount, sessions]);
 
+  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
       {/* Top Navigation */}
-      <SiteHeader badge="CLASS" ctaLabel="1기 사전 신청 →" ctaHref={APPLY_FORM_URL} />
+      <SiteHeader
+        badge="CLASS"
+        ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
+        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+      />
 
       {/* Hero */}
       <section className="section pt-32 pb-20">
@@ -128,14 +137,25 @@ export default function ClassPage() {
             </p>
 
             <div className="hero-cta-row mb-8">
-              <a
-                href={APPLY_FORM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hero-cta"
-              >
-                1기 사전 신청하기 →
-              </a>
+              {canApply ? (
+                <a
+                  href={siteSettings.classApplicationFormUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-cta"
+                >
+                  1기 사전 신청하기 →
+                </a>
+              ) : (
+                <a
+                  href={siteSettings.classInquiryFormUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-cta"
+                >
+                  {siteSettings.classApplicationClosedMessage} (문의 →)
+                </a>
+              )}
               <a href="#group-drop" className="hero-cta-secondary">
                 수강료 시뮬레이션 ↓
               </a>
@@ -489,23 +509,51 @@ export default function ClassPage() {
           <span className="acid">REBELLION.</span>
         </h2>
         <p className="text-sm text-[#8C8C8C] mb-8 max-w-md mx-auto break-keep">
-          1기 사전 신청을 받고 있습니다. 접수 후 카카오톡으로 일정과 상담을 안내드립니다.
+          {canApply
+            ? '1기 사전 신청을 받고 있습니다. 접수 후 카카오톡으로 일정과 상담을 안내드립니다.'
+            : '현재 1기 강의 신청 폼을 정비 중입니다. 기관·소그룹 강의 문의나 오픈 알림은 아래 문의 폼 또는 카카오톡으로 남겨주세요.'}
         </p>
         <div className="flex flex-wrap justify-center gap-3 mb-5">
-          <a
-            href={APPLY_FORM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hero-cta"
-          >
-            1기 사전 신청하기 →
-          </a>
+          {canApply ? (
+            <a
+              href={siteSettings.classApplicationFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-cta"
+            >
+              1기 사전 신청하기 →
+            </a>
+          ) : (
+            <a
+              href={siteSettings.classInquiryFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-cta"
+            >
+              강의 문의 · 오픈 알림 신청 →
+            </a>
+          )}
           <Link to="/" className="hero-cta-secondary">
             <ArrowLeft size={14} />
             <span>홈으로 돌아가기</span>
           </Link>
         </div>
-        <div className="text-xs text-[#8C8C8C]">문의 · 카카오톡 @AI다함스튜디오</div>
+        <div className="text-xs text-[#8C8C8C]">
+          문의 · 카카오톡 {siteSettings.kakaoHandle}
+          {siteSettings.kakaoUrl && (
+            <>
+              {' '}·{' '}
+              <a
+                href={siteSettings.kakaoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#C6FF00] underline"
+              >
+                바로 연결 →
+              </a>
+            </>
+          )}
+        </div>
       </section>
 
       {/* Footer */}

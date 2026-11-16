@@ -18,6 +18,7 @@ import {
   UserPlus, UserCheck, Copy, Check, XCircle, ShieldCheck, PlayCircle
 } from 'lucide-react';
 import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
+import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
 import mCubeLogo from '../assets/m_cube_logo.png';
 
 const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
@@ -91,6 +92,7 @@ interface PortfolioData {
   };
   actions: Project[];
   activities?: any[];
+  siteSettings?: SiteSettings;
 }
 
 type CmsTab = 'content' | 'invites' | 'approvals' | 'classes';
@@ -218,7 +220,8 @@ export default function AdminDashboard() {
       descriptionSub: '',
       embedSrc: ''
     },
-    actions: []
+    actions: [],
+    siteSettings: { ...DEFAULT_SITE_SETTINGS }
   });
 
   // UI state
@@ -485,7 +488,8 @@ export default function AdminDashboard() {
             embedSrc: parsed.masterpiece?.embedSrc || 'https://www.youtube.com/embed/P-b7WV-obKs'
           },
           actions: normalizeActions(parsed.actions),
-          activities: Array.isArray(parsed.activities) ? parsed.activities : []
+          activities: Array.isArray(parsed.activities) ? parsed.activities : [],
+          siteSettings: normalizeSiteSettings(parsed.siteSettings)
         });
       } else {
         setPortfolioData({
@@ -502,7 +506,8 @@ export default function AdminDashboard() {
             embedSrc: 'https://www.youtube.com/embed/P-b7WV-obKs'
           },
           actions: normalizeActions(DEFAULT_ACTIONS),
-          activities: []
+          activities: [],
+          siteSettings: { ...DEFAULT_SITE_SETTINGS }
         });
       }
     } catch (e) {
@@ -769,7 +774,8 @@ export default function AdminDashboard() {
             : portfolioData.masterpiece.embedSrc
         },
         actions: normalizedActions,
-        activities: latestActivities
+        activities: latestActivities,
+        siteSettings: normalizeSiteSettings(portfolioData.siteSettings)
       };
 
       setPortfolioData(prev => ({
@@ -1670,6 +1676,178 @@ export default function AdminDashboard() {
               <div className="p-4 bg-black/50 border border-white/10 rounded text-xs text-neutral-300 leading-relaxed space-y-1">
                 <p>• 현재 로그인된 관리자 계정(<strong className="text-[#ccff00]">{user.email}</strong>)으로 활동 관리 페이지에서 직접 사진 등록, 기사 링크 첨부, 수정 및 삭제가 가능합니다.</p>
                 <p>• 일반 방문자에게는 등록 및 삭제 버튼이 노출되지 않으며 오직 읽기 전용으로 안전하게 제공됩니다.</p>
+              </div>
+            </div>
+
+            {/* ═══ Section 6: Forms, KakaoTalk & Class Application Control ═══ */}
+            <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8 shadow-[8px_8px_0px_rgba(204,255,0,0.1)] space-y-6">
+              <div>
+                <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] mb-1 flex items-center gap-3">
+                  <span className="text-[#f4f4f0]/20 text-3xl font-black">06</span> 폼 · 카카오톡 &amp; 강의 신청 제어
+                </h2>
+                <p className="text-xs text-neutral-400">
+                  강의 신청 폼 오픈 여부, 강의/제작 문의 폼 URL, 실제 카카오톡 채널/오픈채팅 연결 주소를 여기서 관리합니다. (변경 후 우측 상단/하단 Save 버튼 클릭)
+                </p>
+              </div>
+
+              {/* Class Application Open/Close Toggle */}
+              <div className="p-4 bg-black border border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-extrabold text-white">
+                    1기 강의 신청 폼 상태:{' '}
+                    <span className={portfolioData.siteSettings?.classApplicationOpen ? 'text-[#ccff00]' : 'text-[#F5C400]'}>
+                      {portfolioData.siteSettings?.classApplicationOpen ? '열림 (신청 가능)' : '닫힘 (신청 폼 정비 중)'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-neutral-400 mt-0.5">
+                    닫힘 상태에서는 /class 및 /class/schedule의 신청 버튼이 준비 중 안내로 전환됩니다.
+                  </div>
+                </div>
+                <label className="inline-flex items-center gap-2.5 cursor-pointer shrink-0 px-4 py-2.5 border border-white/20 bg-[#141414]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(portfolioData.siteSettings?.classApplicationOpen)}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          classApplicationOpen: e.target.checked
+                        }
+                      }))
+                    }
+                    className="w-4 h-4 accent-[#ccff00]"
+                  />
+                  <span className="text-xs font-extrabold text-[#ccff00]">신청 폼 열기</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    강의 신청 폼 URL (오픈 시 연결)
+                  </label>
+                  <input
+                    type="url"
+                    value={portfolioData.siteSettings?.classApplicationFormUrl || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          classApplicationFormUrl: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="https://forms.gle/... (새로 제작한 강의 신청 폼)"
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    신청 닫힘 시 버튼 안내 문구
+                  </label>
+                  <input
+                    type="text"
+                    value={portfolioData.siteSettings?.classApplicationClosedMessage || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          classApplicationClosedMessage: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="1기 신청 폼 정비 중 · 곧 오픈됩니다"
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    강의 · 출강 문의 폼 URL (신청 폼과 별도)
+                  </label>
+                  <input
+                    type="url"
+                    value={portfolioData.siteSettings?.classInquiryFormUrl || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          classInquiryFormUrl: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="https://forms.gle/..."
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    제작 의뢰 문의 폼 URL
+                  </label>
+                  <input
+                    type="url"
+                    value={portfolioData.siteSettings?.projectInquiryFormUrl || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          projectInquiryFormUrl: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="https://forms.gle/..."
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    카카오톡 실제 연결 URL (오픈채팅 / 채널)
+                  </label>
+                  <input
+                    type="url"
+                    value={portfolioData.siteSettings?.kakaoUrl || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          kakaoUrl: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="https://pf.kakao.com/... 또는 https://open.kakao.com/..."
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    카카오톡 채널명 / 핸들
+                  </label>
+                  <input
+                    type="text"
+                    value={portfolioData.siteSettings?.kakaoHandle || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          kakaoHandle: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="@AI다함스튜디오"
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
               </div>
             </div>
             

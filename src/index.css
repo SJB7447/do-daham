@@ -75,12 +75,12 @@ nav.bar.scrolled {
   border-color: var(--div);
 }
 .nav-logo { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
-.nav-logo-text { font-family: 'Black Han Sans','Noto Sans KR',sans-serif; font-size: 15px; letter-spacing: .04em; }
-.nav-links { display: flex; gap: 28px; align-items: center; }
+.nav-logo-text { font-family: 'Black Han Sans','Noto Sans KR',sans-serif; font-size: 17px; letter-spacing: .04em; }
+.nav-links { display: flex; gap: 32px; align-items: center; }
 .nav-links a,
 .nav-dropdown-trigger,
 .workshop-nav-links a {
-  font-size: 12px; font-weight: 700; letter-spacing: .08em;
+  font-size: 15px; font-weight: 700; letter-spacing: .04em;
   color: var(--dim-aa); text-decoration: none; transition: color .2s;
   line-height: 1;
   display: inline-flex;
@@ -322,9 +322,9 @@ nav.bar.scrolled {
   color: #EA580C;
 }
 .nav-watch {
-  font-size: 10px; font-weight: 800; letter-spacing: .14em;
+  font-size: 13px; font-weight: 800; letter-spacing: .08em;
   color: #0A0A0A; background: var(--acid);
-  padding: 9px 17px; border-radius: 2px; text-decoration: none;
+  padding: 10px 18px; border-radius: 2px; text-decoration: none;
   transition: background .2s, transform .15s;
 }
 .nav-watch:hover { background: #fff; transform: translateY(-1px); }
