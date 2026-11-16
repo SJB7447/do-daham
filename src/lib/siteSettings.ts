@@ -16,7 +16,7 @@ const DEFAULT_INQUIRY_FORM_URL =
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   kakaoHandle: '@AI다함스튜디오',
-  kakaoUrl: '',
+  kakaoUrl: 'https://pf.kakao.com/_iixoxfX',
   projectInquiryFormUrl: DEFAULT_INQUIRY_FORM_URL,
   classInquiryFormUrl: DEFAULT_INQUIRY_FORM_URL,
   classApplicationOpen: false, // 요청에 따라 1기 강의 신청 폼은 우선 닫아둠 (CMS에서 개방 가능)
@@ -30,7 +30,7 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
   }
   return {
     kakaoHandle: String(raw.kakaoHandle || DEFAULT_SITE_SETTINGS.kakaoHandle),
-    kakaoUrl: String(raw.kakaoUrl || '').trim(),
+    kakaoUrl: String(raw.kakaoUrl || DEFAULT_SITE_SETTINGS.kakaoUrl).trim(),
     projectInquiryFormUrl: String(
       raw.projectInquiryFormUrl || DEFAULT_SITE_SETTINGS.projectInquiryFormUrl
     ).trim(),
