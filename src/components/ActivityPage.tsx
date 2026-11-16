@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ArrowLeft, Plus, X, ExternalLink, ZoomIn, 
-  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, Lock, RefreshCw, Loader2, Quote, Sparkles
+  Plus, X, ExternalLink, ZoomIn, Lock,
+  Trash2, Image as ImageIcon, Newspaper, ShieldCheck, RefreshCw, Loader2, Quote, Sparkles
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
+import { SiteHeader } from './SiteHeader';
 import { ActivityItem, ActivityCategory } from '../types/activity';
 import FaceBlurStudioModal from './FaceBlurStudioModal';
 import { 
@@ -271,25 +272,7 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
       {/* ── Top Navigation ── */}
-      <nav className={`bar ${scrolled ? 'scrolled' : ''}`} id="main-nav">
-        <Link to="/" className="nav-logo">
-          <CrystalCube size={26} pfx="actnav" />
-          <span className="nav-logo-text uppercase tracking-wider">DO-DAHAM</span>
-        </Link>
-        <div className="nav-links">
-          <Link to="/#manifesto">MANIFESTO</Link>
-          <Link to="/#masterpiece">MASTERPIECE</Link>
-          <Link to="/#actions">ACTIONS</Link>
-          <Link to="/activity" className="text-[#C6FF00] font-bold border-b border-[#C6FF00] pb-0.5">
-            ACTIVITY & MEDIA
-          </Link>
-          <Link to="/admin">CMS</Link>
-        </div>
-        <Link to="/" className="nav-watch flex items-center gap-1.5">
-          <ArrowLeft size={13} />
-          <span>PORTFOLIO HOME</span>
-        </Link>
-      </nav>
+      <SiteHeader badge="ACTIVITY" scrolled={scrolled} ctaLabel="문의하기 →" ctaTo="/#contact" />
 
       {/* ── Page Header / Sub Hero ── */}
       <header className="pt-32 pb-14 px-6 md:px-14 max-w-7xl mx-auto border-b border-white/[0.08]">
@@ -308,45 +291,34 @@ export default function ActivityPage() {
             </p>
           </div>
 
-          {/* Action Tools (Admin Only vs Visitor) */}
-          <div className="flex items-center gap-3">
-            {isAdmin ? (
-              <>
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-[#C6FF00]/10 border border-[#C6FF00]/30 text-[#C6FF00] text-xs font-mono">
-                  <ShieldCheck size={14} />
-                  <span className="font-bold">ADMIN ACTIVE</span>
-                </div>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#C6FF00] text-[#0A0A0A] font-extrabold text-xs uppercase tracking-wider rounded-md hover:bg-white transition-all shadow-[0_0_20px_rgba(198,255,0,0.25)] hover:scale-105"
-                >
-                  <Plus size={15} />
-                  <span>새 활동 등록 (CMS)</span>
-                </button>
-                <button
-                  onClick={handleResetToDefault}
-                  title="기본 샘플 데이터로 복원"
-                  className="p-2.5 border border-white/15 hover:border-white/40 text-neutral-400 hover:text-white rounded-md transition-colors text-xs"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/admin"
-                title="관리자 로그인"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/10 hover:border-[#C6FF00]/40 text-neutral-400 hover:text-[#C6FF00] text-xs font-mono transition-colors"
+          {/* Action Tools (Admin Only) */}
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-[#C6FF00]/10 border border-[#C6FF00]/30 text-[#C6FF00] text-xs font-mono">
+                <ShieldCheck size={14} />
+                <span className="font-bold">ADMIN ACTIVE</span>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#C6FF00] text-[#0A0A0A] font-extrabold text-xs uppercase tracking-wider rounded-md hover:bg-white transition-all shadow-[0_0_20px_rgba(198,255,0,0.25)] hover:scale-105"
               >
-                <Lock size={12} />
-                <span>ADMIN LOGIN</span>
-              </Link>
-            )}
-          </div>
+                <Plus size={15} />
+                <span>새 활동 등록 (CMS)</span>
+              </button>
+              <button
+                onClick={handleResetToDefault}
+                title="기본 샘플 데이터로 복원"
+                className="p-2.5 border border-white/15 hover:border-white/40 text-neutral-400 hover:text-white rounded-md transition-colors text-xs"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Category Filters & Stat ── */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-white/5">
-          <div className="flex items-center gap-2 bg-white/[0.03] p-1.5 rounded-lg border border-white/[0.08]">
+          <div className="flex items-center gap-2 bg-white/[0.03] p-1.5 rounded-lg border border-white/[0.08] overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveFilter('all')}
               className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${

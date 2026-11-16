@@ -1,0 +1,391 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: portfolios
+    // Document ID: docId (e.g., 'admin_default')
+    // Fields:
+    //   - user_id: string (required, <= 128 chars) - owner UID
+    //   - data: string (required, <= 500000 chars) - serialized JSON portfolio payload
+    //   - updated_at: string (required, <= 64 chars) - ISO 8601 timestamp string
+    //
+    // Collection: invites
+    // Document ID: inviteId (auto-generated)
+    // Fields:
+    //   - emailLower: string (required, valid email, <= 254 chars) - invited instructor email (lowercase)
+    //   - memo: string (optional, <= 500 chars) - admin note
+    //   - tokenHash: string (required, 1..128 chars) - SHA-256 hex hash of invite token
+    //   - status: string (required, 'pending' | 'used' | 'revoked')
+    //   - expiresAtMs: number (optional, > 0) - expiration epoch in ms
+    //   - expiresAt: timestamp (optional) - expiration timestamp
+    //   - createdAtLabel: string (optional, <= 100 chars)
+    //   - createdAt: timestamp (optional)
+    //   - usedByUid: string (optional, <= 128 chars)
+    //   - usedAt: timestamp (optional)
+    //
+    // Collection: instructors
+    // Document ID: uid (matches Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required, immutable, must match {uid})
+    //   - emailLower: string (optional, <= 254 chars)
+    //   - displayName: string (required, 1..80 chars)
+    //   - title: string (required, 1..120 chars)
+    //   - bio: string (optional, <= 500 chars)
+    //   - photoUrl: string (optional, empty or http(s) URL <= 2048 chars)
+    //   - tags: list (optional, <= 10 items)
+    //   - credentials: list (optional, <= 10 items)
+    //   - activeDays: list (optional, <= 7 items)
+    //   - scheduleTime: string (optional, <= 120 chars)
+    //   - status: string (required, 'draft' | 'pending' | 'approved' | 'rejected')
+    //   - showStats: bool (optional) - whether to display lecture stats publicly
+    //   - lectureHours: number (optional, 0..100000) - total lecture hours
+    //   - studentCount: number (optional, 0..500000) - total students taught
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: classes
+    // Document ID: classId (auto-generated)
+    // Fields:
+    //   - instructorUid: string (required, immutable, <= 128 chars)
+    //   - instructorEmail: string (optional, <= 254 chars)
+    //   - title: string (required, 1..150 chars)
+    //   - summary: string (required, 1..500 chars)
+    //   - category: string (optional, <= 80 chars)
+    //   - audience: string (optional, <= 200 chars)
+    //   - startDate: string (optional, <= 32 chars)
+    //   - startTime: string (optional, <= 16 chars)
+    //   - endTime: string (optional, <= 16 chars)
+    //   - sessionCount: number (optional, 1..100)
+    //   - hoursPerSession: number (optional, 1..24)
+    //   - sessions: list (optional, <= 100 items)
+    //   - location: string (optional, <= 200 chars)
+    //   - capacity: number (optional, 1..1000)
+    //   - minToOpen: number (optional, 1..1000)
+    //   - basePrice: number (optional, >= 0)
+    //   - curriculum: list (optional, <= 50 items)
+    //   - enrolledCount: number (optional, >= 0)
+    //   - status: string (required, 'draft' | 'pending' | 'published' | 'confirmed' | 'started' | 'closed' | 'rejected')
+    //   - started: bool (optional, admin-only) - whether class has started
+    //   - startedAt: timestamp (optional, admin-only) - timestamp when class was marked started
+    //   - createdAt: timestamp (optional, immutable)
+    //
+    // Collection: enrollments
+    // Document ID: enrollmentId
+    // Fields: managed exclusively by admins (creation disabled on client; Google Form used)
+    //
+    // Collection: student_works
+    // Document ID: workId (auto-generated)
+    // Fields:
+    //   - authorUid: string (required, immutable, 1..128 chars) - creator UID
+    //   - authorName: string (optional, 0..80 chars) - creator display name
+    //   - authorEmail: string (optional, empty or valid email <= 254 chars) - creator email
+    //   - title: string (required, 1..150 chars) - deliverable title
+    //   - category: string (required, 'AI 영상' | '홈페이지 · 웹' | '업무 자동화')
+    //   - studentLabel: string (optional, 0..80 chars) - student/cohort label
+    //   - description: string (required, 1..1000 chars) - deliverable description
+    //   - mediaUrl: string (optional, empty or http(s) URL <= 2048 chars)
+    //   - linkUrl: string (optional, empty or http(s) URL <= 2048 chars)
+    //   - createdAt: timestamp (optional, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Admin authority check:
+    // Prefer setting the custom claim `admin == true` on the admin Firebase Auth user.
+    // As a fallback, replace the placeholder email in the verified email allowlist below
+    // with your actual admin email address(es).
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        (
+          request.auth.token.email_verified == true &&
+          request.auth.token.email in [
+            'sjb76337447@gmail.com'
+          ]
+        )
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    function isValidOptionalUrl(field, maxLen) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() <= maxLen &&
+         (request.resource.data[field] == '' ||
+          request.resource.data[field].matches('^https://.*') ||
+          request.resource.data[field].matches('^http://.*')));
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 254 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isValidOptionalList(field, maxSize) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is list &&
+         request.resource.data[field].size() <= maxSize);
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in BOTH create and update)
+    // ===============================================================
+
+    function isValidPortfolio(data) {
+      return hasOnlyAllowedFields(['user_id', 'data', 'updated_at']) &&
+        hasRequiredFields(['user_id', 'data', 'updated_at']) &&
+        data.user_id is string && data.user_id.size() > 0 && data.user_id.size() <= 128 &&
+        data.data is string && data.data.size() <= 500000 &&
+        data.updated_at is string && data.updated_at.size() > 0 && data.updated_at.size() <= 64;
+    }
+
+    function isValidInvite(data) {
+      return hasOnlyAllowedFields([
+          'emailLower', 'memo', 'tokenHash', 'status',
+          'expiresAtMs', 'expiresAt', 'createdAtLabel', 'createdAt',
+          'usedByUid', 'usedAt'
+        ]) &&
+        hasRequiredFields(['emailLower', 'tokenHash', 'status']) &&
+        isValidEmail(data.emailLower) &&
+        isValidOptionalString('memo', 0, 500) &&
+        data.tokenHash is string && data.tokenHash.size() > 0 && data.tokenHash.size() <= 128 &&
+        data.status in ['pending', 'used', 'revoked'] &&
+        (!('expiresAtMs' in data) || (data.expiresAtMs is number && data.expiresAtMs > 0)) &&
+        (!('expiresAt' in data) || data.expiresAt is timestamp) &&
+        isValidOptionalString('createdAtLabel', 0, 100) &&
+        (!('createdAt' in data) || data.createdAt is timestamp) &&
+        isValidOptionalString('usedByUid', 1, 128) &&
+        (!('usedAt' in data) || data.usedAt is timestamp);
+    }
+
+    function isValidInviteClaim() {
+      return isAuthenticated() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string &&
+        request.auth.token.email.lower() == resource.data.emailLower &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status == 'used' &&
+        request.resource.data.usedByUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'usedByUid', 'usedAt']) &&
+        isValidInvite(request.resource.data);
+    }
+
+    function isValidInstructor(data, docUid) {
+      return hasOnlyAllowedFields([
+          'uid', 'emailLower', 'displayName', 'title', 'bio',
+          'photoUrl', 'tags', 'credentials', 'activeDays',
+          'scheduleTime', 'status', 'showStats', 'lectureHours',
+          'studentCount', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['uid', 'displayName', 'title', 'status']) &&
+        data.uid is string && data.uid == docUid && data.uid.size() <= 128 &&
+        (!('emailLower' in data) || data.emailLower == '' || isValidEmail(data.emailLower)) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        isValidOptionalString('bio', 0, 500) &&
+        isValidOptionalUrl('photoUrl', 2048) &&
+        isValidOptionalList('tags', 10) &&
+        isValidOptionalList('credentials', 10) &&
+        isValidOptionalList('activeDays', 7) &&
+        isValidOptionalString('scheduleTime', 0, 120) &&
+        data.status in ['draft', 'pending', 'approved', 'rejected'] &&
+        (!('showStats' in data) || data.showStats is bool) &&
+        (!('lectureHours' in data) || (data.lectureHours is number && data.lectureHours >= 0 && data.lectureHours <= 100000)) &&
+        (!('studentCount' in data) || (data.studentCount is number && data.studentCount >= 0 && data.studentCount <= 500000)) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidClass(data) {
+      return hasOnlyAllowedFields([
+          'instructorUid', 'instructorEmail', 'title', 'summary',
+          'category', 'audience', 'startDate', 'startTime', 'endTime',
+          'sessionCount', 'hoursPerSession', 'sessions', 'location', 'capacity',
+          'minToOpen', 'basePrice', 'curriculum', 'enrolledCount',
+          'status', 'started', 'startedAt', 'createdAt'
+        ]) &&
+        hasRequiredFields(['instructorUid', 'title', 'summary', 'status']) &&
+        data.instructorUid is string && data.instructorUid.size() > 0 && data.instructorUid.size() <= 128 &&
+        (!('instructorEmail' in data) || data.instructorEmail == '' || isValidEmail(data.instructorEmail)) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 500 &&
+        isValidOptionalString('category', 0, 80) &&
+        isValidOptionalString('audience', 0, 200) &&
+        isValidOptionalString('startDate', 0, 32) &&
+        isValidOptionalString('startTime', 0, 16) &&
+        isValidOptionalString('endTime', 0, 16) &&
+        (!('sessionCount' in data) || (data.sessionCount is number && data.sessionCount >= 1 && data.sessionCount <= 100)) &&
+        (!('hoursPerSession' in data) || (data.hoursPerSession is number && data.hoursPerSession >= 1 && data.hoursPerSession <= 24)) &&
+        isValidOptionalList('sessions', 100) &&
+        isValidOptionalString('location', 0, 200) &&
+        (!('capacity' in data) || (data.capacity is number && data.capacity >= 1 && data.capacity <= 1000)) &&
+        (!('minToOpen' in data) || (data.minToOpen is number && data.minToOpen >= 1 && data.minToOpen <= 1000)) &&
+        (!('basePrice' in data) || (data.basePrice is number && data.basePrice >= 0 && data.basePrice <= 100000000)) &&
+        isValidOptionalList('curriculum', 50) &&
+        (!('enrolledCount' in data) || (data.enrolledCount is number && data.enrolledCount >= 0 && data.enrolledCount <= 1000)) &&
+        data.status in ['draft', 'pending', 'published', 'confirmed', 'started', 'closed', 'rejected'] &&
+        (!('started' in data) || data.started is bool) &&
+        (!('startedAt' in data) || data.startedAt is timestamp) &&
+        (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidStudentWork(data) {
+      return hasOnlyAllowedFields([
+          'authorUid', 'authorName', 'authorEmail', 'title', 'category',
+          'studentLabel', 'description', 'mediaUrl', 'linkUrl', 'createdAt'
+        ]) &&
+        hasRequiredFields(['authorUid', 'title', 'category', 'description']) &&
+        data.authorUid is string && data.authorUid.size() > 0 && data.authorUid.size() <= 128 &&
+        isValidOptionalString('authorName', 0, 80) &&
+        (!('authorEmail' in data) || data.authorEmail == '' || isValidEmail(data.authorEmail)) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+        data.category in ['AI 영상', '홈페이지 · 웹', '업무 자동화'] &&
+        isValidOptionalString('studentLabel', 0, 80) &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+        isValidOptionalUrl('mediaUrl', 2048) &&
+        isValidOptionalUrl('linkUrl', 2048) &&
+        (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // 1. Portfolios: public read (e.g. admin_default), admin-only write
+    match /portfolios/{docId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPortfolio(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // 2. Invites: admin or signed-in user read; admin create/delete;
+    //    admin update OR verified invited user claiming pending invite
+    match /invites/{inviteId} {
+      allow read: if isAdmin() || isAuthenticated();
+      allow create: if isAdmin() && isValidInvite(request.resource.data);
+      allow update: if (isAdmin() && isValidInvite(request.resource.data)) || isValidInviteClaim();
+      allow delete: if isAdmin();
+    }
+
+    // 3. Instructors: approved profiles are public; owner or admin can read all states;
+    //    owner can create/update only in draft/pending; admin can manage all; admin-only delete
+    match /instructors/{uid} {
+      allow read: if resource.data.status == 'approved' ||
+        isOwner(uid) ||
+        isAdmin();
+      allow create: if (isAdmin() && isValidInstructor(request.resource.data, uid)) ||
+        (isOwner(uid) &&
+         uidUnchanged() &&
+         request.resource.data.status in ['draft', 'pending'] &&
+         isValidInstructor(request.resource.data, uid));
+      allow update: if (isAdmin() && isValidInstructor(request.resource.data, uid)) ||
+        (isOwner(uid) &&
+         uidNotModified() &&
+         request.resource.data.status in ['draft', 'pending'] &&
+         isValidInstructor(request.resource.data, uid));
+      allow delete: if isAdmin();
+    }
+
+    // 4. Classes: published/confirmed/started/closed are public; instructor owner or admin can read all states;
+    //    instructor can create/update only their own classes in draft/pending (cannot set started); admin-only delete
+    match /classes/{classId} {
+      allow read: if resource.data.status in ['published', 'confirmed', 'started', 'closed'] ||
+        (isAuthenticated() && resource.data.instructorUid == request.auth.uid) ||
+        isAdmin();
+      allow create: if (isAdmin() && isValidClass(request.resource.data)) ||
+        (isAuthenticated() &&
+         request.resource.data.instructorUid == request.auth.uid &&
+         request.resource.data.status in ['draft', 'pending'] &&
+         (!('started' in request.resource.data) || request.resource.data.started == false) &&
+         !('startedAt' in request.resource.data) &&
+         isValidClass(request.resource.data));
+      allow update: if (isAdmin() && isValidClass(request.resource.data)) ||
+        (isAuthenticated() &&
+         resource.data.instructorUid == request.auth.uid &&
+         request.resource.data.instructorUid == request.auth.uid &&
+         request.resource.data.status in ['draft', 'pending'] &&
+         (!('started' in request.resource.data) || request.resource.data.started == false) &&
+         areImmutableFieldsUnchanged(['instructorUid', 'createdAt', 'enrolledCount', 'started', 'startedAt']) &&
+         isValidClass(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    // 5. Enrollments: admin-only read/update/delete; client create disabled (external Google Form)
+    match /enrollments/{enrollmentId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if false;
+    }
+
+    // 6. Student Works: public read (showcase on /class);
+    //    authenticated users can create their own; author or admin can update/delete
+    match /student_works/{workId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        isValidStudentWork(request.resource.data) &&
+        request.resource.data.authorUid == request.auth.uid;
+      allow update: if (isAdmin() && isValidStudentWork(request.resource.data)) ||
+        (isAuthenticated() &&
+         resource.data.authorUid == request.auth.uid &&
+         isValidStudentWork(request.resource.data) &&
+         areImmutableFieldsUnchanged(['authorUid', 'createdAt']));
+      allow delete: if isAdmin() ||
+        (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+    }
+
+    // ===============================================================
+    // Default Deny
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

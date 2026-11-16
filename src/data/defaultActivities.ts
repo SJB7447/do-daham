@@ -2,7 +2,12 @@ import { ActivityItem } from '../types/activity';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-export const ADMIN_EMAILS = ['sjb76337447@gmail.com'];
+const ENV_ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
+  .split(',')
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+export const ADMIN_EMAILS = ENV_ADMIN_EMAILS.length > 0 ? ENV_ADMIN_EMAILS : ['sjb76337447@gmail.com'];
 
 export function isAuthorizedAdmin(email?: string | null): boolean {
   if (!email) return false;
@@ -141,8 +146,10 @@ export async function fetchActivitiesFromCloud(): Promise<ActivityItem[]> {
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (parsed.activities && Array.isArray(parsed.activities) && parsed.activities.length > 0) {
         const cleaned = parsed.activities.filter((item: ActivityItem) => !MOCK_IDS.has(item.id));
-        saveStoredActivities(cleaned);
-        return cleaned.sort((a: ActivityItem, b: ActivityItem) => (b.createdAt || 0) - (a.createdAt || 0));
+        if (cleaned.length > 0) {
+          saveStoredActivities(cleaned);
+          return cleaned.sort((a: ActivityItem, b: ActivityItem) => (b.createdAt || 0) - (a.createdAt || 0));
+        }
       }
     }
   } catch (err) {

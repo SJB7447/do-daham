@@ -1,7 +1,7 @@
 # DO-DAHAM (do-daham.com) Design Tokens & Architecture Guide
 
 > **AI 작업 지침 (필독)**
-> “이 프로젝트는 do-daham.com 브랜드 허브입니다. 디자인 토큰(DESIGN.md 기준)과 기존 링크 구조를 절대 임의로 변경하지 말고, 요청한 P0 항목(모바일 메뉴, 문의 동선, SEO, 히어로 문구)만 최소한의 코드로 수정하세요.”
+> “이 프로젝트는 do-daham.com 브랜드 허브 + CLASS 플랫폼입니다. 핵심 브랜드 토큰(`--bg`, `--ink`, `--acid`, `--font-display`, 프리즘 큐브)과 기존 라우트(`/`, `/activity`, `/admin`, `/workshop`, `/workshop-preview`)를 유지하면서, 승인된 개편안(Phase 1~4)을 순차적으로 구현하세요.”
 
 ---
 
@@ -14,8 +14,12 @@
 | :--- | :--- | :--- |
 | `--bg` | `#0A0A0A` | 기본 다크 배경색 |
 | `--ink` | `#F2F2F2` | 기본 본문 및 헤드라인 텍스트 색상 |
-| `--dim` | `#6C6C6C` | 보조/비활성 텍스트 및 캡션 색상 |
+| `--dim` | `#6C6C6C` | 장식 · 비활성 전용 텍스트 색상 (소형 본문 사용 금지) |
+| `--dim-aa` | `#8C8C8C` | 접근성 AA(약 5.9:1) 기준 보조 텍스트 및 레이블 색상 |
 | `--acid` | `#C6FF00` | 브랜드 핵심 포인트 컬러 (Acid Lime) |
+| `--cyan` | `#28B8E8` | 보조/강사 구분/사용 완료 상태 시안 컬러 |
+| `--amber` | `#F5C400` | 경고/승인 대기 상태 앰버 컬러 |
+| `--magenta` | `#E02898` | 오류/거부 상태 마젠타 컬러 |
 | `--div` | `rgba(255,255,255,.08)` | 섹션 및 요소 구분선 색상 |
 | `--card-bd` | `rgba(255,255,255,.07)` | 카드 테두리 색상 |
 | `--nav-blur` | `rgba(10,10,10,.82)` | 스크롤 시 상단 네비게이션 블러 배경 |
@@ -58,10 +62,10 @@
 
 ---
 
-## 3. 작업 범위 원칙 (P0 항목에 집중)
-- **허용된 수정 범위 (P0)**:
-  1. 모바일 메뉴
-  2. 문의 동선
-  3. SEO
-  4. 히어로 문구
-- 위 요청된 P0 항목만 **최소한의 코드 변경**으로 수정하며, 기존 컴포넌트 구조·스타일 토큰·라우팅·CMS 기능은 건드리지 않습니다.
+## 3. 작업 범위 원칙 (순차 개편 Phase 1~4)
+- **Phase 1 (P0 + 브랜드 허브 개편)**:
+  1. 모바일 햄버거 메뉴 및 전체화면 오버레이(포커스 트랩 · ESC 닫기 · 의뢰/교육 진입점)
+  2. 홈 히어로(`<h1>` · 3D 크리스탈 큐브 · 의뢰/클래스 CTA) 및 신뢰 띠 · WHAT WE DO · CLASS 1기 티저 · 강사 · CONTACT(`#contact`)
+  3. SEO(`lang="ko"`, 페이지별 title/description/OG/canonical, `robots.txt`, `sitemap.xml`, `noindex` 분리)
+  4. `ACTIONS` 프로젝트 카드 호버 시 풀컬러 복원
+- **Phase 2+ (CLASS 플랫폼)**: `/class`, `/class/schedule`, `/class/instructors`, `/join/:token`, `/instructor` 및 Firestore 보안 규칙 순차 확장

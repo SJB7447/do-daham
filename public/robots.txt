@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /instructor
+Disallow: /join/
+Disallow: /workshop-preview
+
+Sitemap: https://do-daham.com/sitemap.xml

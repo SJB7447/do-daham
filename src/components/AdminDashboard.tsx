@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  signInWithEmailAndPassword, 
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut, 
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, query, orderBy, serverTimestamp
+} from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../lib/firebase';
 import { 
   ArrowLeft, LogOut, Save, Plus, Trash2, ArrowUp, ArrowDown, 
-  Image as ImageIcon, Youtube, Link as LinkIcon, Cpu, Loader, AlertTriangle
+  Image as ImageIcon, Youtube, Link as LinkIcon, Cpu, Loader, AlertTriangle,
+  UserPlus, UserCheck, Copy, Check, XCircle, ShieldCheck, PlayCircle
 } from 'lucide-react';
 import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
 import mCubeLogo from '../assets/m_cube_logo.png';
@@ -89,13 +93,114 @@ interface PortfolioData {
   activities?: any[];
 }
 
+type CmsTab = 'content' | 'invites' | 'approvals' | 'classes';
+
+interface ClassOperationItem {
+  id: string;
+  title: string;
+  instructorEmail: string;
+  sessionCount: number;
+  hoursPerSession: number;
+  enrolledCount: number;
+  capacity: number;
+  status: string;
+  started: boolean;
+  isSample?: boolean;
+}
+
+const SAMPLE_CLASS_OPS: ClassOperationItem[] = [
+  {
+    id: 'sample-1st-ai',
+    title: 'AI 실무 클래스 1기 (예시)',
+    instructorEmail: 'director@do-daham.com',
+    sessionCount: 6,
+    hoursPerSession: 2,
+    enrolledCount: 12,
+    capacity: 24,
+    status: 'confirmed',
+    started: false,
+    isSample: true
+  }
+];
+
+interface InviteItem {
+  id: string;
+  emailLower: string;
+  memo: string;
+  status: 'pending' | 'used' | 'revoked';
+  expiresAtMs: number;
+  createdAtLabel: string;
+}
+
+interface InstructorApprovalItem {
+  id: string;
+  displayName: string;
+  title: string;
+  bio: string;
+  tags: string[];
+  activeDays: string[];
+  scheduleTime: string;
+  status: 'pending' | 'approved' | 'rejected';
+  isSample?: boolean;
+}
+
+const SAMPLE_PENDING_INSTRUCTORS: InstructorApprovalItem[] = [
+  {
+    id: 'sample-kh',
+    displayName: '김도현 (예시)',
+    title: 'AI 사운드 · 숏폼 디렉터 (예시)',
+    bio: 'AI 음악·보이스 합성과 숏폼 컷 편집 워크플로우를 결합해 브랜드 릴스·유튜브 콘텐츠를 제작합니다.',
+    tags: ['AI 사운드 · Suno', '숏폼 연출', '프롬프트 디자인'],
+    activeDays: ['수', '금'],
+    scheduleTime: '19:30 – 21:30',
+    status: 'pending',
+    isSample: true
+  },
+  {
+    id: 'sample-sy',
+    displayName: '이서연 (예시)',
+    title: 'AI 업무 자동화 · 노코드 빌더 (예시)',
+    bio: '반복 문서 작성과 랜딩페이지 제작을 AI와 노코드 툴로 자동화하는 실무 강의를 진행합니다.',
+    tags: ['업무 자동화', '노코드 웹 구축'],
+    activeDays: ['화', '토'],
+    scheduleTime: '14:00 – 17:00',
+    status: 'pending',
+    isSample: true
+  }
+];
+
+async function hashTokenSha256(rawToken: string): Promise<string> {
+  const bytes = new TextEncoder().encode(rawToken);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function generateCryptoToken(): string {
+  const arr = new Uint8Array(24);
+  crypto.getRandomValues(arr);
+  return Array.from(arr)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+const ADMIN_ALLOWED_EMAILS: string[] = (import.meta.env.VITE_ADMIN_EMAILS || '')
+  .split(',')
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+function isAuthorizedAdmin(currentUser: User | null): boolean {
+  if (!currentUser || !currentUser.email) return false;
+  if (ADMIN_ALLOWED_EMAILS.length === 0) return true;
+  return Boolean(currentUser.emailVerified) && ADMIN_ALLOWED_EMAILS.includes(currentUser.email.toLowerCase());
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   
   // Auth state
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -117,21 +222,240 @@ export default function AdminDashboard() {
   });
 
   // UI state
+  const [activeTab, setActiveTab] = useState<CmsTab>('content');
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState<{ [key: string]: boolean }>({});
 
+  // Invite & Approval state
+  const [invites, setInvites] = useState<InviteItem[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteMemo, setInviteMemo] = useState('');
+  const [inviteTtlHours, setInviteTtlHours] = useState<24 | 48 | 72>(48);
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
+  const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState('');
+  const [approvalItems, setApprovalItems] = useState<InstructorApprovalItem[]>(SAMPLE_PENDING_INSTRUCTORS);
+  const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
+  const [classOps, setClassOps] = useState<ClassOperationItem[]>(SAMPLE_CLASS_OPS);
+  const [classNotice, setClassNotice] = useState('');
+
   // 1. Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser && !isAuthorizedAdmin(currentUser)) {
+        await signOut(auth);
+        setUser(null);
+        setAuthError('승인된 운영자 Google 계정이 아닙니다. 운영자 계정으로 로그인해 주세요.');
+        return;
+      }
       setUser(currentUser);
       if (currentUser) {
         fetchPortfolioData();
+        fetchInvites();
+        fetchInstructorApprovals();
+        fetchClassOps();
       }
     });
     return () => unsubscribe();
   }, []);
+
+  const fetchInvites = async () => {
+    try {
+      const q = query(collection(db, 'invites'), orderBy('expiresAtMs', 'desc'));
+      const snap = await getDocs(q);
+      const list: InviteItem[] = snap.docs.map((d) => {
+        const data = d.data();
+        const expiresAtMs = Number(data.expiresAtMs || 0);
+        return {
+          id: d.id,
+          emailLower: String(data.emailLower || ''),
+          memo: String(data.memo || ''),
+          status: data.status || 'pending',
+          expiresAtMs,
+          createdAtLabel: data.createdAtLabel || '방금 전'
+        };
+      });
+      setInvites(list);
+    } catch (err) {
+      console.warn('Invites collection load skipped or restricted:', err);
+    }
+  };
+
+  const fetchInstructorApprovals = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'instructors'));
+      if (snap.empty) {
+        setApprovalItems(SAMPLE_PENDING_INSTRUCTORS);
+        return;
+      }
+      const list: InstructorApprovalItem[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          displayName: String(data.displayName || '이름 미입력'),
+          title: String(data.title || '직함 미입력'),
+          bio: String(data.bio || ''),
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          activeDays: Array.isArray(data.activeDays) ? data.activeDays : [],
+          scheduleTime: String(data.scheduleTime || ''),
+          status: data.status || 'pending'
+        };
+      });
+      setApprovalItems(list);
+    } catch (err) {
+      console.warn('Instructors collection load skipped or restricted:', err);
+    }
+  };
+
+  const handleCreateInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailLower = inviteEmail.trim().toLowerCase();
+    if (!emailLower || !emailLower.includes('@')) return;
+
+    setCreatingInvite(true);
+    setInviteNotice('');
+    setGeneratedInviteUrl('');
+    setCopiedInviteUrl(false);
+
+    try {
+      const rawToken = generateCryptoToken();
+      const tokenHash = await hashTokenSha256(rawToken);
+      const expiresAtMs = Date.now() + inviteTtlHours * 3600 * 1000;
+      const createdAtLabel = new Date().toLocaleString('ko-KR');
+
+      let savedId = `local-${Date.now()}`;
+      try {
+        const docRef = await addDoc(collection(db, 'invites'), {
+          emailLower,
+          memo: inviteMemo.trim(),
+          tokenHash,
+          status: 'pending',
+          expiresAtMs,
+          createdAtLabel,
+          createdAt: serverTimestamp()
+        });
+        savedId = docRef.id;
+      } catch (err) {
+        console.warn('Firestore invites write failed, using local preview:', err);
+        setInviteNotice('참고: Firestore invites 쓰기 권한이 아직 없어 현재 세션 미리보기로만 생성되었습니다.');
+      }
+
+      const newInvite: InviteItem = {
+        id: savedId,
+        emailLower,
+        memo: inviteMemo.trim(),
+        status: 'pending',
+        expiresAtMs,
+        createdAtLabel
+      };
+      setInvites((prev) => [newInvite, ...prev]);
+      setGeneratedInviteUrl(`${window.location.origin}/join/${rawToken}`);
+      setInviteEmail('');
+      setInviteMemo('');
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const handleRevokeInvite = async (id: string) => {
+    setInvites((prev) => prev.map((item) => (item.id === id ? { ...item, status: 'revoked' } : item)));
+    if (!id.startsWith('local-')) {
+      try {
+        await updateDoc(doc(db, 'invites', id), { status: 'revoked' });
+      } catch (err) {
+        console.warn('Invite revoke failed in Firestore:', err);
+      }
+    }
+  };
+
+  const handleCopyInviteUrl = async () => {
+    if (!generatedInviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(generatedInviteUrl);
+      setCopiedInviteUrl(true);
+      setTimeout(() => setCopiedInviteUrl(false), 2000);
+    } catch {
+      setCopiedInviteUrl(false);
+    }
+  };
+
+  const handleApprovalDecision = async (id: string, nextStatus: 'approved' | 'rejected') => {
+    setApprovalItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status: nextStatus } : item))
+    );
+    const target = approvalItems.find((item) => item.id === id);
+    if (target && !target.isSample) {
+      try {
+        await updateDoc(doc(db, 'instructors', id), { status: nextStatus });
+      } catch (err) {
+        console.warn('Instructor approval update failed in Firestore:', err);
+      }
+    }
+  };
+
+  const fetchClassOps = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'classes'));
+      if (snap.empty) {
+        setClassOps(SAMPLE_CLASS_OPS);
+        return;
+      }
+      const list: ClassOperationItem[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          title: String(data.title || '제목 없음'),
+          instructorEmail: String(data.instructorEmail || ''),
+          sessionCount: Number(data.sessionCount || 6),
+          hoursPerSession: Number(data.hoursPerSession || 2),
+          enrolledCount: Number(data.enrolledCount || 0),
+          capacity: Number(data.capacity || 20),
+          status: String(data.status || 'pending'),
+          started: Boolean(data.started)
+        };
+      });
+      setClassOps(list);
+    } catch (err) {
+      console.warn('Classes collection load skipped or restricted:', err);
+    }
+  };
+
+  const handleUpdateClassNumbers = (id: string, field: 'enrolledCount' | 'hoursPerSession', val: number) => {
+    setClassOps((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, [field]: Math.max(0, val) } : c))
+    );
+  };
+
+  const handleStartClass = async (item: ClassOperationItem) => {
+    if (item.started) return;
+    setClassNotice('');
+    setClassOps((prev) =>
+      prev.map((c) => (c.id === item.id ? { ...c, started: true, status: 'started' } : c))
+    );
+
+    if (!item.isSample) {
+      try {
+        await updateDoc(doc(db, 'classes', item.id), {
+          enrolledCount: item.enrolledCount,
+          hoursPerSession: item.hoursPerSession,
+          started: true,
+          status: 'started',
+          startedAt: serverTimestamp()
+        });
+        setClassNotice(
+          `[${item.title}] 수업이 시작 처리되어 +${item.enrolledCount}명 · +${item.sessionCount * item.hoursPerSession}시간이 메인/클래스 누적 실적에 반영되었습니다.`
+        );
+      } catch (err) {
+        console.warn('Class start update failed in Firestore:', err);
+        setClassNotice('Firestore classes 쓰기 권한을 확인해 주세요. (현재 화면 상태만 반영됨)');
+      }
+    } else {
+      setClassNotice('예시 수업은 미리보기로만 전환됩니다. 강사가 등록한 실제 수업에서 시작을 누르면 DB 실적에 합산됩니다.');
+    }
+  };
 
   // 2. Fetch Portfolio Data from Firestore
   const fetchPortfolioData = async () => {
@@ -188,21 +512,29 @@ export default function AdminDashboard() {
     }
   };
 
-  // 3. Handle Authentication
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 3. Handle Google Authentication
+  const handleGoogleAuth = async () => {
     setAuthError('');
     setAuthLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setPassword('');
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+
+      if (!isAuthorizedAdmin(cred.user)) {
+        await signOut(auth);
+        setAuthError('승인된 운영자 Google 계정이 아닙니다. 운영자 계정으로 로그인해 주세요.');
+        return;
+      }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setAuthError('이메일 혹은 비밀번호가 일치하지 않습니다.');
+      if (err.code === 'auth/popup-closed-by-user') {
+        setAuthError('Google 로그인 창이 닫혔습니다. 다시 시도해 주세요.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setAuthError('Firebase Console에서 Google 로그인 제공업체를 먼저 활성화해 주세요.');
       } else {
-        setAuthError(err.message || '로그인 중 오류가 발생했습니다.');
+        setAuthError(err.message || 'Google 로그인 중 오류가 발생했습니다.');
       }
     } finally {
       setAuthLoading(false);
@@ -212,8 +544,6 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setEmail('');
-      setPassword('');
       setPortfolioData({
         userName: '',
         userRole: '',
@@ -486,50 +816,37 @@ export default function AdminDashboard() {
           <h1 className="font-display text-4xl mb-4 text-[#ccff00] uppercase tracking-wider">
             Owner Login
           </h1>
-          <p className="opacity-70 font-bold mb-8 text-sm break-keep tracking-widest">
-            포트폴리오의 업로드 및 수정을 위해 이메일로 로그인해 주세요.
+          <p className="opacity-70 font-bold mb-8 text-sm break-keep leading-relaxed">
+            보안을 위해 비밀번호 방식 대신 Google 계정(2단계 인증 지원)으로만 운영자 CMS에 로그인합니다.
           </p>
 
-          <form onSubmit={handleAuth} className="space-y-4 text-left">
-            <div>
-              <label className="text-xs font-bold opacity-40 uppercase tracking-[0.15em] mb-1.5 block">Email Address</label>
-              <input 
-                type="email"
-                placeholder="admin@example.com" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full bg-black border border-[#f4f4f0]/20 p-4 font-bold outline-none focus:border-[#ccff00] text-sm transition-colors text-white"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold opacity-40 uppercase tracking-[0.15em] mb-1.5 block">Password</label>
-              <input 
-                type="password"
-                placeholder="******" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full bg-black border border-[#f4f4f0]/20 p-4 font-bold outline-none focus:border-[#ccff00] text-sm transition-colors text-white"
-              />
-            </div>
-
+          <div className="space-y-4 text-left">
             {authError && (
-              <p className="text-red-500 font-bold text-sm tracking-wider flex items-center gap-1.5 bg-red-950/20 border border-red-500/30 p-3">
-                <AlertTriangle size={14} />
-                {authError}
+              <p className="text-[#E02898] font-bold text-xs tracking-wide flex items-start gap-2 bg-[#E02898]/10 border border-[#E02898]/40 p-3.5 rounded-[2px]">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                <span>{authError}</span>
               </p>
             )}
 
-            <button 
-              type="submit" 
-              disabled={authLoading} 
-              className="w-full bg-[#ccff00] text-black font-display text-xl uppercase py-4 hover:bg-white transition-colors mt-4 disabled:opacity-50 font-bold tracking-widest cursor-pointer shadow-[4px_4px_0_#fff]"
+            <button
+              type="button"
+              onClick={handleGoogleAuth}
+              disabled={authLoading}
+              className="w-full min-h-[52px] bg-[#F2F2F2] text-[#0A0A0A] font-extrabold text-sm tracking-wide rounded-[2px] flex items-center justify-center gap-3 hover:bg-[#C6FF00] transition-colors disabled:opacity-50 cursor-pointer shadow-[4px_4px_0_rgba(204,255,0,0.35)]"
             >
-              {authLoading ? 'Authenticating...' : 'Login'}
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z" />
+                <path fill="#34A853" d="M12 24c3.3 0 6.08-1.09 8.1-2.96l-3.88-3.05c-1.1.74-2.51 1.18-4.22 1.18-3.24 0-5.99-2.19-6.97-5.13H1.03v3.14C3.05 21.19 7.21 24 12 24Z" />
+                <path fill="#FBBC05" d="M5.03 14.04c-.25-.74-.39-1.54-.39-2.36 0-.82.14-1.62.39-2.36V6.18H1.03C.37 7.5 0 8.99 0 10.56c0 1.57.37 3.06 1.03 4.38l4-3.14Z" />
+                <path fill="#EA4335" d="M12 4.75c1.8 0 3.41.62 4.68 1.84l3.51-3.51C18.07 1.19 15.3 0 12 0 7.21 0 3.05 2.81 1.03 6.82l4 3.14C6.01 6.94 8.76 4.75 12 4.75Z" />
+              </svg>
+              <span>{authLoading ? 'Google 계정 확인 중...' : 'Google 계정으로 로그인'}</span>
             </button>
-          </form>
+
+            <p className="text-[11px] text-[#8C8C8C] text-center pt-2 leading-relaxed">
+              운영자 허용 목록은 환경변수 <code className="text-[#C6FF00]">VITE_ADMIN_EMAILS</code> 및 Firestore 보안 규칙으로 제한할 수 있습니다.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -564,25 +881,425 @@ export default function AdminDashboard() {
       <div className="max-w-4xl mx-auto px-4 md:px-6 mt-28 space-y-8 relative z-10">
         <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 border-b border-[#f4f4f0]/10 pb-6">
           <div>
+            <div className="inline-block text-[10px] font-extrabold tracking-[0.16em] px-2.5 py-1 bg-[#f4f4f0] text-black mb-2">
+              CMS · 운영자 전용
+            </div>
             <h1 className="text-4xl font-black uppercase text-[#ccff00] tracking-wider mb-2">DO-DAHAM CMS</h1>
-            <p className="text-sm font-bold opacity-40">이곳에서 포트폴리오의 실시간 데이터를 편리하게 업로드하고 관리합니다.</p>
+            <p className="text-sm font-bold opacity-40">사이트 콘텐츠, 강사 초대 링크 발급, 강사 프로필 승인을 관리합니다.</p>
           </div>
           
+          {activeTab === 'content' && (
+            <button
+              onClick={handleSave}
+              disabled={savingData || loadingData}
+              className={`flex items-center justify-center gap-2 px-8 py-3.5 font-bold uppercase text-sm tracking-widest transition-all ${
+                saveSuccess 
+                  ? 'bg-green-500 text-black shadow-[4px_4px_0_#fff]' 
+                  : 'bg-[#ccff00] text-black hover:bg-white shadow-[4px_4px_0_#fff]'
+              } disabled:opacity-50 cursor-pointer`}
+            >
+              {savingData ? <Loader className="animate-spin" size={16} /> : <Save size={16}/>}
+              {savingData ? 'Saving...' : saveSuccess ? 'Saved ✓' : 'Save & Publish'}
+            </button>
+          )}
+        </div>
+
+        {/* CMS Tabs */}
+        <div className="flex flex-wrap gap-2 border-b border-[#f4f4f0]/15 pb-4">
           <button
-            onClick={handleSave}
-            disabled={savingData || loadingData}
-            className={`flex items-center justify-center gap-2 px-8 py-3.5 font-bold uppercase text-sm tracking-widest transition-all ${
-              saveSuccess 
-                ? 'bg-green-500 text-black shadow-[4px_4px_0_#fff]' 
-                : 'bg-[#ccff00] text-black hover:bg-white shadow-[4px_4px_0_#fff]'
-            } disabled:opacity-50 cursor-pointer`}
+            type="button"
+            onClick={() => setActiveTab('content')}
+            className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors cursor-pointer ${
+              activeTab === 'content'
+                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                : 'bg-black text-[#f4f4f0]/70 border-[#f4f4f0]/20 hover:border-[#ccff00]'
+            }`}
           >
-            {savingData ? <Loader className="animate-spin" size={16} /> : <Save size={16}/>}
-            {savingData ? 'Saving...' : saveSuccess ? 'Saved ✓' : 'Save & Publish'}
+            사이트 콘텐츠
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('invites')}
+            className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
+              activeTab === 'invites'
+                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                : 'bg-black text-[#f4f4f0]/70 border-[#f4f4f0]/20 hover:border-[#ccff00]'
+            }`}
+          >
+            <UserPlus size={14} /> 강사 초대
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('approvals')}
+            className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
+              activeTab === 'approvals'
+                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                : 'bg-black text-[#f4f4f0]/70 border-[#f4f4f0]/20 hover:border-[#ccff00]'
+            }`}
+          >
+            <UserCheck size={14} /> 프로필 승인
+            <span className="px-1.5 py-0.5 text-[10px] bg-[#F5C400] text-black font-black rounded-sm">
+              {approvalItems.filter((i) => i.status === 'pending').length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('classes')}
+            className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
+              activeTab === 'classes'
+                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                : 'bg-black text-[#f4f4f0]/70 border-[#f4f4f0]/20 hover:border-[#ccff00]'
+            }`}
+          >
+            <PlayCircle size={14} /> 수업 시작 · 실적
           </button>
         </div>
 
-        {loadingData ? (
+        {activeTab === 'classes' ? (
+          <div className="space-y-6">
+            <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8">
+              <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] mb-2 flex items-center gap-2">
+                <PlayCircle size={18} /> 수업 시작 확정 · 누적 실적 반영
+              </h2>
+              <p className="text-xs text-[#f4f4f0]/65 mb-6 leading-relaxed">
+                실제 수강생 모집이 완료되어 수업이 시작되면 <strong>수업 시작 확정</strong> 버튼을 눌러 주세요.
+                해당 수업의 수강생 수와 총 강의 시간(회차 × 회당 시간)이 메인 홈페이지 및 클래스 페이지 누적 실적(400시간+ / 320명+)에 자동 합산됩니다.
+              </p>
+
+              {classNotice && (
+                <div className="mb-5 p-3.5 border border-[#ccff00] bg-[#ccff00]/10 text-[#ccff00] text-xs font-bold">
+                  {classNotice}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {classOps.map((cls) => (
+                  <div key={cls.id} className="p-5 bg-black border border-white/15 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={`text-[10px] font-extrabold px-2 py-0.5 border ${
+                              cls.started
+                                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                                : 'border-[#F5C400] text-[#F5C400]'
+                            }`}
+                          >
+                            {cls.started ? '수업 시작됨 · 실적 반영 완료' : `상태: ${cls.status}`}
+                          </span>
+                          {cls.isSample && (
+                            <span className="text-[10px] text-white/50 border border-white/15 px-1.5 py-0.5">
+                              예시
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-bold">{cls.title}</h3>
+                        <p className="text-xs text-[#f4f4f0]/55">
+                          담당: {cls.instructorEmail || '미지정'} · {cls.sessionCount}회 과정
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={cls.started}
+                        onClick={() => handleStartClass(cls)}
+                        className="px-5 py-3 bg-[#ccff00] text-black text-xs font-extrabold uppercase tracking-wider disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <PlayCircle size={15} />
+                        {cls.started ? '실적 반영 완료 ✓' : '수업 시작 확정 (실적 반영)'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-white/10">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#f4f4f0]/55 mb-1">
+                          실제 수강생 수 (명)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={cls.capacity}
+                          disabled={cls.started}
+                          value={cls.enrolledCount}
+                          onChange={(e) =>
+                            handleUpdateClassNumbers(cls.id, 'enrolledCount', Number(e.target.value) || 0)
+                          }
+                          className="w-full bg-[#111] border border-white/20 p-2.5 text-sm text-white disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#f4f4f0]/55 mb-1">
+                          회당 강의 시간 (시간)
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={12}
+                          disabled={cls.started}
+                          value={cls.hoursPerSession}
+                          onChange={(e) =>
+                            handleUpdateClassNumbers(cls.id, 'hoursPerSession', Number(e.target.value) || 1)
+                          }
+                          className="w-full bg-[#111] border border-white/20 p-2.5 text-sm text-white disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="flex flex-col justify-end p-2.5 bg-[#111] border border-white/10">
+                        <span className="text-[10px] text-[#f4f4f0]/55">반영될 총 시간</span>
+                        <span className="text-sm font-extrabold text-[#ccff00]">
+                          +{cls.sessionCount * cls.hoursPerSession}시간 · +{cls.enrolledCount}명
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'invites' ? (
+          <div className="space-y-8">
+            {/* Invite Form */}
+            <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8">
+              <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] mb-2 flex items-center gap-2">
+                <UserPlus size={18} /> 1회용 강사 초대 링크 발급
+              </h2>
+              <p className="text-xs text-[#f4f4f0]/60 mb-6">
+                초대받은 이메일의 구글 계정으로만 가입 가능하며, 원문 링크는 발급 직후 1회만 표시됩니다. (DB에는 SHA-256 해시만 저장)
+              </p>
+
+              <form onSubmit={handleCreateInvite} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div className="md:col-span-5 flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">초대 이메일 *</label>
+                  <input
+                    type="email"
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="instructor@gmail.com"
+                    className="bg-black border border-[#f4f4f0]/20 p-3 text-sm text-[#f4f4f0] outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+                <div className="md:col-span-4 flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">메모 (분야·이름)</label>
+                  <input
+                    type="text"
+                    value={inviteMemo}
+                    onChange={(e) => setInviteMemo(e.target.value)}
+                    placeholder="예: AI 숏폼 파트너 강사"
+                    className="bg-black border border-[#f4f4f0]/20 p-3 text-sm text-[#f4f4f0] outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+                <div className="md:col-span-3 flex flex-col gap-1.5">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">유효 시간</label>
+                  <select
+                    value={inviteTtlHours}
+                    onChange={(e) => setInviteTtlHours(Number(e.target.value) as 24 | 48 | 72)}
+                    className="bg-black border border-[#f4f4f0]/20 p-3 text-sm text-[#f4f4f0] outline-none focus:border-[#ccff00]"
+                  >
+                    <option value={24}>24시간</option>
+                    <option value={48}>48시간 (권장)</option>
+                    <option value={72}>72시간</option>
+                  </select>
+                </div>
+                <div className="md:col-span-12">
+                  <button
+                    type="submit"
+                    disabled={creatingInvite}
+                    className="px-6 py-3 bg-[#ccff00] text-black font-extrabold text-xs uppercase tracking-widest hover:bg-white transition-colors cursor-pointer"
+                  >
+                    {creatingInvite ? '생성 중...' : '초대 링크 발급 →'}
+                  </button>
+                </div>
+              </form>
+
+              {inviteNotice && (
+                <div className="mt-4 p-3 border border-[#F5C400]/50 text-[#F5C400] text-xs font-bold">
+                  {inviteNotice}
+                </div>
+              )}
+
+              {generatedInviteUrl && (
+                <div className="mt-6 p-4 border-2 border-[#ccff00] bg-black space-y-2">
+                  <div className="text-xs font-extrabold text-[#ccff00] uppercase tracking-wider">
+                    발급 완료 · 이 링크는 한 번만 표시됩니다
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                    <code className="flex-1 text-xs bg-[#141414] p-2.5 border border-white/10 break-all text-[#f4f4f0]">
+                      {generatedInviteUrl}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyInviteUrl}
+                      className="px-4 py-2.5 bg-[#ccff00] text-black text-xs font-extrabold flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      {copiedInviteUrl ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedInviteUrl ? '복사됨 ✓' : '링크 복사'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Invite History */}
+            <div className="border border-[#f4f4f0]/20 bg-[#0d0d0d] p-6 md:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h3 className="text-lg font-bold uppercase tracking-wider">초대 내역 ({invites.length})</h3>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <a href="/join/preview?demo=valid" target="_blank" rel="noreferrer" className="text-[#ccff00] underline">가입화면(유효)</a>
+                  <a href="/join/preview?demo=used" target="_blank" rel="noreferrer" className="text-[#28B8E8] underline">사용됨</a>
+                  <a href="/join/preview?demo=expired" target="_blank" rel="noreferrer" className="text-[#8C8C8C] underline">만료</a>
+                  <a href="/join/preview?demo=mismatch" target="_blank" rel="noreferrer" className="text-[#E02898] underline">다른계정</a>
+                </div>
+              </div>
+
+              {invites.length === 0 ? (
+                <p className="text-sm text-[#f4f4f0]/50 py-6">아직 발급된 초대 내역이 없습니다.</p>
+              ) : (
+                <div className="space-y-3">
+                  {invites.map((inv) => {
+                    const isExpired = inv.status === 'pending' && inv.expiresAtMs > 0 && Date.now() > inv.expiresAtMs;
+                    const badgeLabel =
+                      inv.status === 'used'
+                        ? '사용됨'
+                        : inv.status === 'revoked'
+                          ? '취소됨'
+                          : isExpired
+                            ? '만료'
+                            : '대기 중';
+                    return (
+                      <div
+                        key={inv.id}
+                        className="p-4 bg-black border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 border ${
+                                badgeLabel === '사용됨'
+                                  ? 'bg-[#28B8E8] text-black border-[#28B8E8]'
+                                  : badgeLabel === '대기 중'
+                                    ? 'border-[#ccff00] text-[#ccff00]'
+                                    : badgeLabel === '취소됨'
+                                      ? 'border-[#E02898] text-[#E02898]'
+                                      : 'border-white/35 text-white/60'
+                              }`}
+                            >
+                              {badgeLabel}
+                            </span>
+                            <span className="font-bold text-sm">{inv.emailLower}</span>
+                          </div>
+                          <div className="text-xs text-[#f4f4f0]/55">
+                            {inv.memo || '메모 없음'} · 만료: {new Date(inv.expiresAtMs).toLocaleString('ko-KR')}
+                          </div>
+                        </div>
+
+                        {badgeLabel === '대기 중' && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeInvite(inv.id)}
+                            className="px-3 py-2 border border-[#E02898] text-[#E02898] text-xs font-bold hover:bg-[#E02898] hover:text-black transition-colors cursor-pointer self-start sm:self-center"
+                          >
+                            초대 취소
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'approvals' ? (
+          <div className="space-y-6">
+            <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] flex items-center gap-2">
+                    <ShieldCheck size={18} /> 강사 프로필 공개 승인
+                  </h2>
+                  <p className="text-xs text-[#f4f4f0]/60 mt-1">
+                    강사가 작성한 프로필을 검토하고 공개(`approved`) 또는 반려(`rejected`) 처리합니다.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {(['ALL', 'pending', 'approved', 'rejected'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setApprovalFilter(st)}
+                      className={`px-3 py-1.5 text-xs font-bold border cursor-pointer ${
+                        approvalFilter === st
+                          ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                          : 'border-white/20 text-white/70'
+                      }`}
+                    >
+                      {st === 'ALL' ? '전체' : st === 'pending' ? '승인 대기' : st === 'approved' ? '승인됨' : '반려됨'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {approvalItems
+                  .filter((item) => approvalFilter === 'ALL' || item.status === approvalFilter)
+                  .map((item) => (
+                    <div key={item.id} className="p-5 bg-black border border-white/15 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 border ${
+                                item.status === 'approved'
+                                  ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                                  : item.status === 'rejected'
+                                    ? 'border-[#E02898] text-[#E02898]'
+                                    : 'border-[#F5C400] text-[#F5C400]'
+                              }`}
+                            >
+                              {item.status === 'approved' ? '공개 승인됨' : item.status === 'rejected' ? '반려됨' : '● 운영자 승인 대기'}
+                            </span>
+                            {item.isSample && (
+                              <span className="text-[10px] text-white/50 border border-white/15 px-1.5 py-0.5">
+                                예시 데이터
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-bold">{item.displayName}</h3>
+                          <p className="text-xs text-[#f4f4f0]/60">{item.title}</p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApprovalDecision(item.id, 'approved')}
+                            disabled={item.status === 'approved'}
+                            className="px-4 py-2 bg-[#ccff00] text-black text-xs font-extrabold disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                          >
+                            <Check size={14} /> 승인
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApprovalDecision(item.id, 'rejected')}
+                            disabled={item.status === 'rejected'}
+                            className="px-4 py-2 border border-[#E02898] text-[#E02898] text-xs font-extrabold disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                          >
+                            <XCircle size={14} /> 반려
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-[#f4f4f0]/80 leading-relaxed">{item.bio}</p>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#f4f4f0]/55 pt-2 border-t border-white/10">
+                        <div>전문 분야: {item.tags.join(' · ') || '미입력'}</div>
+                        <div>가능 시간: {item.activeDays.join(', ')} {item.scheduleTime}</div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        ) : loadingData ? (
           <div className="py-20 flex flex-col justify-center items-center gap-4 text-[#ccff00]">
             <Loader className="animate-spin w-8 h-8" />
             <p className="font-mono text-sm uppercase tracking-widest opacity-60">Loading Saved Portfolio...</p>
