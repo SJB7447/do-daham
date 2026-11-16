@@ -1420,13 +1420,13 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   transform: translateY(-3px);
 }
 .what-card.featured {
-  border-color: rgba(198,255,0,.55);
-  box-shadow: 0 0 40px rgba(198,255,0,.06);
+  border-color: var(--card-bd);
+  box-shadow: none;
 }
 .what-card.featured:hover,
 .what-card.featured:focus-visible {
-  border-color: var(--acid);
-  box-shadow: 0 14px 40px rgba(198,255,0,.16);
+  border-color: rgba(198,255,0,.72);
+  box-shadow: 0 14px 36px rgba(198,255,0,.1);
 }
 .what-card-top {
   display: flex; align-items: center; justify-content: space-between;
@@ -1434,7 +1434,6 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   color: var(--dim-aa); margin-bottom: 18px;
   transition: color .2s;
 }
-.what-card.featured .what-card-top,
 .what-card:hover .what-card-top,
 .what-card:focus-visible .what-card-top { color: var(--acid); }
 .what-card h3 {
@@ -1604,13 +1603,12 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   border-color: rgba(198,255,0,.6);
   box-shadow: 0 12px 32px rgba(198,255,0,.08);
 }
-.contact-card.primary { border-color: rgba(198,255,0,.35); }
+.contact-card.primary { border-color: var(--card-bd); }
 .contact-card-kicker {
   font-size: 10px; font-weight: 800; letter-spacing: .14em;
   color: var(--dim-aa); margin-bottom: 8px;
   transition: color .2s;
 }
-.contact-card.primary .contact-card-kicker,
 .contact-card:hover .contact-card-kicker { color: var(--acid); }
 .contact-card h3 {
   font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif;
