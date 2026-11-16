@@ -908,6 +908,44 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* Owner / Lead Instructor Quick Actions */}
+        <div className="p-4 bg-[#0d0d0d] border border-[#ccff00]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs font-bold text-[#f4f4f0]/80">
+            <span className="text-[#ccff00] font-extrabold mr-2">DIRECTOR SHORTCUT</span>
+            대표님 본인 강의 · 프로필도 같은 계정으로 바로 관리할 수 있습니다.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/instructor/profile')}
+              className="px-3 py-2 text-xs font-extrabold border border-white/20 hover:border-[#ccff00] hover:text-[#ccff00] cursor-pointer"
+            >
+              내 강사 프로필 편집
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/instructor/classes')}
+              className="px-3 py-2 text-xs font-extrabold border border-white/20 hover:border-[#ccff00] hover:text-[#ccff00] cursor-pointer"
+            >
+              내 수업 일정 관리
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/instructor/classes/new')}
+              className="px-3 py-2 text-xs font-extrabold bg-[#ccff00] text-black hover:bg-white cursor-pointer"
+            >
+              + 새 수업 개설
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/class#showcase')}
+              className="px-3 py-2 text-xs font-extrabold border border-white/20 hover:border-[#ccff00] hover:text-[#ccff00] cursor-pointer"
+            >
+              수료생 결과물 올리기
+            </button>
+          </div>
+        </div>
+
         {/* CMS Tabs */}
         <div className="flex flex-wrap gap-2 border-b border-[#f4f4f0]/15 pb-4">
           <button
@@ -1048,6 +1086,13 @@ export default function AdminDashboard() {
                           >
                             <PlayCircle size={15} />
                             {cls.started ? '실적 반영 완료 ✓' : '수업 시작 확정'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/instructor/classes')}
+                            className="px-3 py-2.5 border border-white/25 text-white text-xs font-bold hover:border-[#ccff00] hover:text-[#ccff00] cursor-pointer"
+                          >
+                            일정 · 장소 수정
                           </button>
                           <button
                             type="button"
