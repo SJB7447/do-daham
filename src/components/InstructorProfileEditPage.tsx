@@ -82,7 +82,7 @@ export default function InstructorProfileEditPage() {
             title: String(d.title || ''),
             bio: String(d.bio || ''),
             photoUrl: String(d.photoUrl || ''),
-            tags: Array.isArray(d.tags) && d.tags.length > 0 ? d.tags.slice(0, 4) : ['AI 영상 연출'],
+            tags: Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : ['AI 영상 연출'],
             credentials:
               Array.isArray(d.credentials) && d.credentials.length > 0 ? d.credentials.slice(0, 5) : [''],
             activeDays: Array.isArray(d.activeDays) ? d.activeDays : ['화', '목'],
@@ -145,12 +145,18 @@ export default function InstructorProfileEditPage() {
   const toggleTag = (tag: string) => {
     setForm((prev) => {
       const exists = prev.tags.includes(tag);
-      if (exists) {
-        return { ...prev, tags: prev.tags.filter((t) => t !== tag) };
-      }
-      if (prev.tags.length >= 4) return prev;
-      return { ...prev, tags: [...prev.tags, tag] };
+      return {
+        ...prev,
+        tags: exists ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag]
+      };
     });
+  };
+
+  const toggleAllTags = () => {
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.length === FIELD_TAG_PRESETS.length ? [] : [...FIELD_TAG_PRESETS]
+    }));
   };
 
   const toggleDay = (day: Weekday) => {
@@ -193,7 +199,7 @@ export default function InstructorProfileEditPage() {
           title: form.title.trim(),
           bio: form.bio.trim().slice(0, 100),
           photoUrl: form.photoUrl.trim(),
-          tags: form.tags.slice(0, 4),
+          tags: form.tags,
           credentials: form.credentials.map((c) => c.trim()).filter(Boolean).slice(0, 5),
           activeDays: form.activeDays,
           scheduleTime: form.scheduleTime.trim(),
@@ -400,14 +406,28 @@ export default function InstructorProfileEditPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">
-                      직함 · 한 줄 역할 *
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-[#8C8C8C]">
+                        직함 · 한 줄 역할 *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((p) => ({
+                            ...p,
+                            title: 'DO-DAHAM 대표 · AI 크리에이티브 디렉터'
+                          }))
+                        }
+                        className="text-[11px] font-bold text-[#C6FF00] hover:underline cursor-pointer"
+                      >
+                        추천 예시 넣기
+                      </button>
+                    </div>
                     <input
                       type="text"
                       value={form.title}
                       onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="예: AI 영상 · 크리에이티브 디렉터"
+                      placeholder="예: DO-DAHAM 대표 · AI 영상·웹 실무 디렉터"
                       className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                     />
                   </div>
@@ -417,25 +437,47 @@ export default function InstructorProfileEditPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-[#8C8C8C]">강사 소개</label>
-                    <span className="text-xs font-bold text-[#8C8C8C]">
-                      {form.bio.length} / 100자
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((p) => ({
+                            ...p,
+                            bio: '도구를 외우는 수업이 아니라, 각자의 브랜드와 업무에 바로 쓰는 AI 결과물을 완성하는 실전 강의를 진행합니다.'
+                          }))
+                        }
+                        className="text-[11px] font-bold text-[#C6FF00] hover:underline cursor-pointer"
+                      >
+                        추천 소개 넣기
+                      </button>
+                      <span className="text-xs font-bold text-[#8C8C8C]">
+                        {form.bio.length} / 100자
+                      </span>
+                    </div>
                   </div>
                   <textarea
                     rows={3}
                     maxLength={100}
                     value={form.bio}
                     onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
-                    placeholder="수강생이 어떤 결과물을 가져갈 수 있는지 100자 이내로 작성해 주세요."
+                    placeholder="예: 광고·숏폼·웹서비스를 직접 제작하는 현업 디렉터. 각자의 실제 결과물을 완성하는 실전 강의를 진행합니다."
                     className="w-full p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                   />
                 </div>
 
-                {/* Tags (Max 4) */}
+                {/* Tags (Unlimited + Select All) */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-[#8C8C8C]">전문 분야 (최대 4개)</label>
-                    <span className="text-xs font-bold text-[#C6FF00]">{form.tags.length} / 4</span>
+                    <label className="text-xs font-bold text-[#8C8C8C]">
+                      전문 분야 (가능한 분야 모두 선택)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleAllTags}
+                      className="text-xs font-bold text-[#C6FF00] hover:underline cursor-pointer"
+                    >
+                      {form.tags.length === FIELD_TAG_PRESETS.length ? '선택 해제' : '전체 선택'} ({form.tags.length}개)
+                    </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {FIELD_TAG_PRESETS.map((tag) => {
