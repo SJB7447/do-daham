@@ -523,11 +523,17 @@ nav.bar.scrolled {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 5v14l11-7z'/%3E%3C/svg%3E") center/contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 5v14l11-7z'/%3E%3C/svg%3E") center/contain no-repeat;
 }
-.action-card:not(.dim):hover { transform: translateY(-5px); border-color: rgba(198,255,0,.45); }
+.action-card:not(.dim):hover {
+  transform: translateY(-5px);
+  border-color: var(--acid);
+  box-shadow: 0 14px 36px rgba(198,255,0,.1);
+}
+.action-card:not(.dim):hover .card-tag,
+.action-card:not(.dim):hover .card-name { color: var(--acid); }
 .action-card:not(.dim):hover::after { opacity: 1; transform: translate(0,0); }
 .action-card.dim { opacity: .4; cursor: default; align-items: flex-start; justify-content: center; }
-.card-tag { font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--dim); margin-bottom: 9px; }
-.card-name { font-family: 'Black Han Sans','Noto Sans KR',sans-serif; font-size: clamp(20px, 2vw, 28px); }
+.card-tag { font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--dim-aa); margin-bottom: 9px; transition: color .2s; }
+.card-name { font-family: 'Black Han Sans','Noto Sans KR',sans-serif; font-size: clamp(20px, 2vw, 28px); transition: color .2s; }
 .card-1 { background: linear-gradient(150deg,#13130C,#0B0B0B); }
 .card-2 { background: linear-gradient(150deg,#0E1206,#0B0B0B); }
 .card-3 { background: linear-gradient(150deg,#08110E,#0B0B0B); }
@@ -1404,24 +1410,40 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   justify-content: space-between;
   text-decoration: none;
   color: var(--ink);
-  transition: border-color .2s, transform .2s;
+  transition: border-color .2s, transform .2s, box-shadow .2s, background .2s;
 }
-.what-card:hover { border-color: rgba(255,255,255,.28); transform: translateY(-2px); }
+.what-card:hover,
+.what-card:focus-visible {
+  border-color: rgba(198,255,0,.72);
+  background: linear-gradient(150deg, #171B0D, #0C0D09);
+  box-shadow: 0 14px 36px rgba(198,255,0,.1);
+  transform: translateY(-3px);
+}
 .what-card.featured {
   border-color: rgba(198,255,0,.55);
   box-shadow: 0 0 40px rgba(198,255,0,.06);
 }
-.what-card.featured:hover { border-color: var(--acid); }
+.what-card.featured:hover,
+.what-card.featured:focus-visible {
+  border-color: var(--acid);
+  box-shadow: 0 14px 40px rgba(198,255,0,.16);
+}
 .what-card-top {
   display: flex; align-items: center; justify-content: space-between;
   font-size: 10px; font-weight: 800; letter-spacing: .14em;
   color: var(--dim-aa); margin-bottom: 18px;
+  transition: color .2s;
 }
-.what-card.featured .what-card-top { color: var(--acid); }
+.what-card.featured .what-card-top,
+.what-card:hover .what-card-top,
+.what-card:focus-visible .what-card-top { color: var(--acid); }
 .what-card h3 {
   font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif;
   font-size: 28px; line-height: 1.2; margin-bottom: 12px;
+  transition: color .2s;
 }
+.what-card:hover h3,
+.what-card:focus-visible h3 { color: var(--acid); }
 .what-card p {
   font-size: 14px; line-height: 1.75; color: var(--dim-aa);
   margin-bottom: 22px; word-break: keep-all;
@@ -1432,6 +1454,12 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   color: var(--dim-aa);
   border: 1px solid rgba(255,255,255,.12);
   padding: 5px 10px; border-radius: 2px;
+  transition: border-color .2s, color .2s;
+}
+.what-card:hover .what-tag,
+.what-card:focus-visible .what-tag {
+  border-color: rgba(198,255,0,.38);
+  color: var(--ink);
 }
 
 /* ── CLASS 1기 Teaser & Ticket Voucher ──────── */
@@ -1570,17 +1598,26 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   border: 1px solid var(--card-bd);
   border-radius: 2px;
   padding: 28px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.contact-card:hover {
+  border-color: rgba(198,255,0,.6);
+  box-shadow: 0 12px 32px rgba(198,255,0,.08);
 }
 .contact-card.primary { border-color: rgba(198,255,0,.35); }
 .contact-card-kicker {
   font-size: 10px; font-weight: 800; letter-spacing: .14em;
   color: var(--dim-aa); margin-bottom: 8px;
+  transition: color .2s;
 }
-.contact-card.primary .contact-card-kicker { color: var(--acid); }
+.contact-card.primary .contact-card-kicker,
+.contact-card:hover .contact-card-kicker { color: var(--acid); }
 .contact-card h3 {
   font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif;
   font-size: 26px; margin-bottom: 8px;
+  transition: color .2s;
 }
+.contact-card:hover h3 { color: var(--acid); }
 .contact-card p {
   font-size: 14px; line-height: 1.7; color: var(--dim-aa);
   margin-bottom: 20px; word-break: keep-all;
@@ -1610,9 +1647,9 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   min-width: 44px;
   padding: 0 12px;
 }
-.inst-filter-chip:hover {
-  border-color: rgba(255,255,255,.4);
-  color: var(--ink);
+.inst-filter-chip:not(.is-active):hover {
+  border-color: var(--acid);
+  color: var(--acid);
 }
 .inst-filter-chip.is-active {
   background: var(--acid);
@@ -1632,7 +1669,15 @@ footer { padding: 56px 56px; display: flex; align-items: center; justify-content
   border: 1px solid var(--card-bd);
   border-radius: 2px;
   overflow: hidden;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
 }
+.inst-card:hover {
+  border-color: rgba(198,255,0,.6);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(198,255,0,.08);
+}
+.inst-card h2 { transition: color .2s; }
+.inst-card:hover h2 { color: var(--acid); }
 .inst-card.is-lead {
   border-color: rgba(198,255,0,.45);
   box-shadow: 0 0 42px rgba(198,255,0,.06);
