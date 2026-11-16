@@ -5,6 +5,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Calendar, CheckCircle2, ImagePlus, LogOut, Menu, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
+import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
 
@@ -37,6 +38,7 @@ interface InstructorFormState {
 export default function InstructorProfileEditPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthorizedInstructor, setIsAuthorizedInstructor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [notice, setNotice] = useState('');
@@ -62,12 +64,18 @@ export default function InstructorProfileEditPage() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setAuthLoading(false);
-      if (!currentUser) return;
+      if (!currentUser) {
+        setIsAuthorizedInstructor(false);
+        setAuthLoading(false);
+        return;
+      }
+
+      const isAdminUser = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
 
       try {
         const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
         if (snap.exists()) {
+          setIsAuthorizedInstructor(true);
           const d = snap.data();
           setForm({
             displayName: String(d.displayName || currentUser.displayName || ''),
@@ -85,6 +93,7 @@ export default function InstructorProfileEditPage() {
             status: d.status || 'draft'
           });
         } else {
+          setIsAuthorizedInstructor(isAdminUser);
           setForm((prev) => ({
             ...prev,
             displayName: currentUser.displayName || prev.displayName
@@ -92,6 +101,9 @@ export default function InstructorProfileEditPage() {
         }
       } catch (err) {
         console.warn('Instructor profile load skipped or restricted:', err);
+        setIsAuthorizedInstructor(isAdminUser);
+      } finally {
+        setAuthLoading(false);
       }
     });
     return () => unsub();
@@ -289,6 +301,24 @@ export default function InstructorProfileEditPage() {
               className="w-full min-h-[52px] bg-[#F2F2F2] text-[#0A0A0A] font-extrabold text-sm rounded-[2px] hover:bg-[#C6FF00] transition-colors cursor-pointer"
             >
               Google 계정으로 로그인 →
+            </button>
+          </div>
+        ) : !isAuthorizedInstructor ? (
+          <div className="max-w-lg mx-auto my-12 bg-[#11120E] border border-[#E02898]/50 rounded-[2px] p-8 text-center">
+            <div className="text-[11px] font-extrabold tracking-[0.16em] text-[#E02898] mb-3">
+              ACCESS RESTRICTED
+            </div>
+            <h1 className="ff-disp text-3xl mb-3">초대된 강사 전용 페이지입니다</h1>
+            <p className="text-sm text-[#8C8C8C] leading-relaxed mb-6 break-keep">
+              현재 로그인된 계정({user.email})은 강사 초대를 통해 등록된 계정이 아닙니다.
+              운영자에게 강사 초대 링크를 요청해 가입을 완료해 주세요.
+            </p>
+            <button
+              type="button"
+              onClick={() => signOut(auth)}
+              className="hero-cta w-full justify-center"
+            >
+              로그아웃 후 다른 계정으로 로그인
             </button>
           </div>
         ) : (

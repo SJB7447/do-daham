@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Calendar, CheckCircle2, Clock, LogOut, MapPin, Menu, Save, Sparkles, Users } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
+import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
 
@@ -30,6 +31,7 @@ function generateSessionDates(startDateStr: string, count: number): string[] {
 export default function InstructorClassCreatePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthorizedInstructor, setIsAuthorizedInstructor] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -59,9 +61,22 @@ export default function InstructorClassCreatePage() {
   );
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setAuthLoading(false);
+      if (!currentUser) {
+        setIsAuthorizedInstructor(false);
+        setAuthLoading(false);
+        return;
+      }
+      const isAdminUser = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      try {
+        const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
+        setIsAuthorizedInstructor(isAdminUser || snap.exists());
+      } catch {
+        setIsAuthorizedInstructor(isAdminUser);
+      } finally {
+        setAuthLoading(false);
+      }
     });
     return () => unsub();
   }, []);
@@ -221,6 +236,24 @@ export default function InstructorClassCreatePage() {
               className="w-full min-h-[52px] bg-[#F2F2F2] text-[#0A0A0A] font-extrabold text-sm rounded-[2px] hover:bg-[#C6FF00] transition-colors cursor-pointer"
             >
               Google 계정으로 로그인 →
+            </button>
+          </div>
+        ) : !isAuthorizedInstructor ? (
+          <div className="max-w-lg mx-auto my-12 bg-[#11120E] border border-[#E02898]/50 rounded-[2px] p-8 text-center">
+            <div className="text-[11px] font-extrabold tracking-[0.16em] text-[#E02898] mb-3">
+              ACCESS RESTRICTED
+            </div>
+            <h1 className="ff-disp text-3xl mb-3">초대된 강사 전용 페이지입니다</h1>
+            <p className="text-sm text-[#8C8C8C] leading-relaxed mb-6 break-keep">
+              현재 로그인된 계정({user.email})은 강사 초대를 통해 등록된 계정이 아닙니다.
+              운영자에게 강사 초대 링크를 요청해 가입을 완료해 주세요.
+            </p>
+            <button
+              type="button"
+              onClick={() => signOut(auth)}
+              className="hero-cta w-full justify-center"
+            >
+              로그아웃 후 다른 계정으로 로그인
             </button>
           </div>
         ) : (

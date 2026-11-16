@@ -12,6 +12,7 @@ import SchedulePage from './components/SchedulePage';
 import JoinInvitePage from './components/JoinInvitePage';
 import InstructorProfileEditPage from './components/InstructorProfileEditPage';
 import InstructorClassCreatePage from './components/InstructorClassCreatePage';
+import InstructorLoginPage from './components/InstructorLoginPage';
 import ProjectPage from './components/ProjectPage';
 import { CrystalCube } from './components/CrystalCube';
 import { SiteHeader } from './components/SiteHeader';
@@ -98,6 +99,12 @@ function RouteScrollHandler() {
         title: 'CMS 관리자 | DO-DAHAM',
         description: 'DO-DAHAM 관리자 대시보드',
         url: 'https://do-daham.com/admin',
+        robots: 'noindex, nofollow'
+      },
+      '/instructor/login': {
+        title: '강사 로그인 | DO-DAHAM CLASS',
+        description: 'DO-DAHAM CLASS 강사 전용 로그인',
+        url: 'https://do-daham.com/instructor/login',
         robots: 'noindex, nofollow'
       },
       '/instructor/profile': {
@@ -747,8 +754,12 @@ function PortfolioHome() {
           <div>{data.userName.toLowerCase()}.com</div>
           <div>© {new Date().getFullYear()} ALL RIGHTS RESERVED.</div>
           <div className="text-[#8C8C8C] my-1">문의 · 카카오톡 @AI다함스튜디오</div>
-          <div className="acid flex justify-end gap-3 items-center">
+          <div className="acid flex justify-end gap-3 items-center flex-wrap">
             <span>OR NOT. WE DON&apos;T CARE.</span>
+            <span>•</span>
+            <Link to="/instructor/login" className="hover:underline flex items-center gap-1 font-bold text-xs text-[#8C8C8C] hover:text-[#C6FF00]">
+              강사 로그인
+            </Link>
             <span>•</span>
             <Link to="/admin" className="hover:underline flex items-center gap-1 font-bold text-xs">
               <Settings size={10} /> CMS LOGIN
@@ -772,6 +783,8 @@ export default function App() {
         <Route path="/class/schedule" element={<SchedulePage />} />
         <Route path="/class/instructors" element={<InstructorsPage />} />
         <Route path="/join/:token" element={<JoinInvitePage />} />
+        <Route path="/instructor" element={<InstructorLoginPage />} />
+        <Route path="/instructor/login" element={<InstructorLoginPage />} />
         <Route path="/instructor/profile" element={<InstructorProfileEditPage />} />
         <Route path="/instructor/classes/new" element={<InstructorClassCreatePage />} />
         <Route path="/activity" element={<ActivityPage />} />

@@ -8,7 +8,7 @@ import {
   User
 } from 'firebase/auth';
 import {
-  doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, query, orderBy, serverTimestamp
+  doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '../lib/firebase';
@@ -394,6 +394,40 @@ export default function AdminDashboard() {
     setClassOps((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: Math.max(0, val) } : c))
     );
+  };
+
+  const handleClassStatusChange = async (
+    item: ClassOperationItem,
+    nextStatus: 'published' | 'confirmed' | 'closed' | 'rejected'
+  ) => {
+    setClassNotice('');
+    setClassOps((prev) => prev.map((c) => (c.id === item.id ? { ...c, status: nextStatus } : c)));
+    if (!item.isSample) {
+      try {
+        await updateDoc(doc(db, 'classes', item.id), {
+          status: nextStatus,
+          enrolledCount: item.enrolledCount,
+          hoursPerSession: item.hoursPerSession
+        });
+        setClassNotice(`[${item.title}] 상태가 '${nextStatus}'로 변경되었습니다.`);
+      } catch (err) {
+        console.warn('Class status update failed:', err);
+        setClassNotice('상태 변경 중 오류가 발생했습니다. Firestore 권한을 확인해 주세요.');
+      }
+    }
+  };
+
+  const handleDeleteClass = async (item: ClassOperationItem) => {
+    if (!window.confirm(`"${item.title}" 수업을 삭제하시겠습니까?`)) return;
+    setClassOps((prev) => prev.filter((c) => c.id !== item.id));
+    if (!item.isSample) {
+      try {
+        await deleteDoc(doc(db, 'classes', item.id));
+        setClassNotice(`[${item.title}] 수업이 삭제되었습니다.`);
+      } catch (err) {
+        console.warn('Class delete failed:', err);
+      }
+    }
   };
 
   const handleStartClass = async (item: ClassOperationItem) => {
@@ -928,12 +962,21 @@ export default function AdminDashboard() {
         {activeTab === 'classes' ? (
           <div className="space-y-6">
             <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8">
-              <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] mb-2 flex items-center gap-2">
-                <PlayCircle size={18} /> 수업 시작 확정 · 누적 실적 반영
-              </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] flex items-center gap-2">
+                  <PlayCircle size={18} /> 수업 승인 · 운영 · 시작 실적 반영
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => navigate('/instructor/classes/new')}
+                  className="px-4 py-2.5 bg-[#ccff00] text-black text-xs font-extrabold uppercase tracking-wider hover:bg-white cursor-pointer self-start sm:self-auto"
+                >
+                  + 새 수업 직접 등록
+                </button>
+              </div>
               <p className="text-xs text-[#f4f4f0]/65 mb-6 leading-relaxed">
-                실제 수강생 모집이 완료되어 수업이 시작되면 <strong>수업 시작 확정</strong> 버튼을 눌러 주세요.
-                해당 수업의 수강생 수와 총 강의 시간(회차 × 회당 시간)이 메인 홈페이지 및 클래스 페이지 누적 실적(400시간+ / 320명+)에 자동 합산됩니다.
+                강사가 등록한 수업의 <strong>게시 승인(공개)</strong>, <strong>개설 확정</strong>, <strong>수업 시작 확정</strong>을 관리합니다.
+                실제 수업이 시작되면 <strong>수업 시작 확정</strong> 시 수강생 수와 총 강의 시간(회차 × 회당 시간)이 메인 홈페이지 및 클래스 누적 실적에 자동 합산됩니다.
               </p>
 
               {classNotice && (
@@ -942,43 +985,79 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              <div className="space-y-4">
-                {classOps.map((cls) => (
-                  <div key={cls.id} className="p-5 bg-black border border-white/15 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={`text-[10px] font-extrabold px-2 py-0.5 border ${
-                              cls.started
-                                ? 'bg-[#ccff00] text-black border-[#ccff00]'
-                                : 'border-[#F5C400] text-[#F5C400]'
-                            }`}
-                          >
-                            {cls.started ? '수업 시작됨 · 실적 반영 완료' : `상태: ${cls.status}`}
-                          </span>
-                          {cls.isSample && (
-                            <span className="text-[10px] text-white/50 border border-white/15 px-1.5 py-0.5">
-                              예시
+              {classOps.length === 0 ? (
+                <div className="p-8 bg-black border border-white/10 text-center space-y-3">
+                  <p className="text-sm text-[#f4f4f0]/60">아직 등록된 수업이 없습니다.</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/instructor/classes/new')}
+                    className="px-5 py-2.5 border border-[#ccff00] text-[#ccff00] text-xs font-extrabold cursor-pointer hover:bg-[#ccff00] hover:text-black transition-colors"
+                  >
+                    첫 수업 등록하기 →
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {classOps.map((cls) => (
+                    <div key={cls.id} className="p-5 bg-black border border-white/15 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 border ${
+                                cls.started
+                                  ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                                  : cls.status === 'published' || cls.status === 'confirmed'
+                                    ? 'border-[#28B8E8] text-[#28B8E8]'
+                                    : 'border-[#F5C400] text-[#F5C400]'
+                              }`}
+                            >
+                              {cls.started ? '수업 시작됨 · 실적 반영 완료' : `상태: ${cls.status}`}
                             </span>
-                          )}
+                          </div>
+                          <h3 className="text-lg font-bold">{cls.title}</h3>
+                          <p className="text-xs text-[#f4f4f0]/55">
+                            담당: {cls.instructorEmail || '미지정'} · {cls.sessionCount}회 과정
+                          </p>
                         </div>
-                        <h3 className="text-lg font-bold">{cls.title}</h3>
-                        <p className="text-xs text-[#f4f4f0]/55">
-                          담당: {cls.instructorEmail || '미지정'} · {cls.sessionCount}회 과정
-                        </p>
-                      </div>
 
-                      <button
-                        type="button"
-                        disabled={cls.started}
-                        onClick={() => handleStartClass(cls)}
-                        className="px-5 py-3 bg-[#ccff00] text-black text-xs font-extrabold uppercase tracking-wider disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shrink-0"
-                      >
-                        <PlayCircle size={15} />
-                        {cls.started ? '실적 반영 완료 ✓' : '수업 시작 확정 (실적 반영)'}
-                      </button>
-                    </div>
+                        <div className="flex flex-wrap gap-2">
+                          {!cls.started && cls.status !== 'published' && cls.status !== 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleClassStatusChange(cls, 'published')}
+                              className="px-3.5 py-2.5 border border-[#28B8E8] text-[#28B8E8] text-xs font-extrabold hover:bg-[#28B8E8] hover:text-black cursor-pointer"
+                            >
+                              게시 승인 (공개)
+                            </button>
+                          )}
+                          {!cls.started && cls.status !== 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleClassStatusChange(cls, 'confirmed')}
+                              className="px-3.5 py-2.5 border border-[#ccff00] text-[#ccff00] text-xs font-extrabold hover:bg-[#ccff00] hover:text-black cursor-pointer"
+                            >
+                              개설 확정
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={cls.started}
+                            onClick={() => handleStartClass(cls)}
+                            className="px-4 py-2.5 bg-[#ccff00] text-black text-xs font-extrabold uppercase tracking-wider disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shrink-0"
+                          >
+                            <PlayCircle size={15} />
+                            {cls.started ? '실적 반영 완료 ✓' : '수업 시작 확정'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteClass(cls)}
+                            className="px-3 py-2.5 border border-[#E02898]/60 text-[#E02898] text-xs font-bold hover:bg-[#E02898] hover:text-black cursor-pointer"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-white/10">
                       <div>
@@ -1022,7 +1101,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         ) : activeTab === 'invites' ? (

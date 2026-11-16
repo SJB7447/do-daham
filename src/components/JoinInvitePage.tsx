@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { AlertTriangle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
@@ -153,6 +153,28 @@ export default function JoinInvitePage() {
           usedByUid: currentUser.uid,
           usedAt: serverTimestamp()
         });
+
+        // Initialize instructor profile document if not present
+        const instRef = doc(db, 'instructors', currentUser.uid);
+        const instSnap = await getDoc(instRef);
+        if (!instSnap.exists()) {
+          await setDoc(instRef, {
+            uid: currentUser.uid,
+            emailLower: (currentUser.email || '').toLowerCase(),
+            displayName: currentUser.displayName || '파트너 강사',
+            title: 'DO-DAHAM 파트너 강사',
+            bio: '',
+            tags: [],
+            credentials: [],
+            activeDays: [],
+            scheduleTime: '',
+            showStats: false,
+            lectureHours: 0,
+            studentCount: 0,
+            status: 'draft',
+            updatedAt: serverTimestamp()
+          });
+        }
       }
       setState('completed');
     } catch (err: any) {
