@@ -179,8 +179,10 @@ export default function ClassPage() {
           <div className="relative bg-gradient-to-br from-[#14180A] to-[#0B0B0B] border border-[#C6FF00]/45 rounded-[2px] p-7">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
-                <div className="class-status-pill mb-2">1기 사전 신청 접수 중</div>
-                <h2 className="ff-disp text-2xl">소수정예 오프라인 실습</h2>
+                <div className="class-status-pill mb-2">
+                  {canApply ? '1기 사전 신청 접수 중' : '1기 개강 준비 중'}
+                </div>
+                <h2 className="ff-disp text-2xl">오프라인 실무 클래스</h2>
               </div>
               <CrystalCube size={44} pfx="clscard" />
             </div>
@@ -189,8 +191,8 @@ export default function ClassPage() {
               <div className="py-3.5 grid grid-cols-[72px_1fr] gap-3">
                 <span className="text-[#8C8C8C] font-bold">회차</span>
                 <div>
-                  <div className="font-semibold">6회 또는 8회 · 주 1회 3시간</div>
-                  <div className="text-xs text-[#C6FF00] mt-0.5">예시 · 토 14:00–17:00 (확정 전)</div>
+                  <div className="font-semibold">6회 또는 8회 완성 과정</div>
+                  <div className="text-xs text-[#C6FF00] mt-0.5">세부 요일 · 시간 확정 후 공지</div>
                 </div>
               </div>
               <div className="py-3.5 grid grid-cols-[72px_1fr] gap-3">
@@ -202,13 +204,13 @@ export default function ClassPage() {
               </div>
               <div className="py-3.5 grid grid-cols-[72px_1fr] gap-3">
                 <span className="text-[#8C8C8C] font-bold">장소</span>
-                <div className="font-semibold">섭외 중 · 확정 시 안내</div>
+                <div className="font-semibold">확정 시 개별 안내</div>
               </div>
               <div className="py-3.5 grid grid-cols-[72px_1fr] gap-3">
                 <span className="text-[#8C8C8C] font-bold">시작일</span>
                 <div>
-                  <div className="font-semibold">2026.12 중 (장소 확정 후 안내)</div>
-                  <div className="text-xs text-[#8C8C8C] mt-0.5">예시 · 날짜 확정 전</div>
+                  <div className="font-semibold">일정 확정 후 공지</div>
+                  <div className="text-xs text-[#8C8C8C] mt-0.5">문의 폼 접수 시 오픈 알림 우선 안내</div>
                 </div>
               </div>
             </div>

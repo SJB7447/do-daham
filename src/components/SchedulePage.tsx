@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, MapPin, Users } from 'lucide-react';
+import { db } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
-
-const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
 type ClassStatus = 'confirmed' | 'urgent' | 'pending';
 
@@ -28,78 +28,9 @@ interface ScheduleClassItem {
   basePrice: number;
   currentPrice: number;
   nextDropHint: string;
-  calendarDates: number[]; // November 2026 sample dates
+  calendarDates: number[];
   isExample: boolean;
 }
-
-const SCHEDULE_CLASSES: ScheduleClassItem[] = [
-  {
-    id: 'class-1st-ai',
-    title: 'AI 실무 클래스 1기',
-    cohort: '1기 · 6회 · 실전 포트폴리오',
-    status: 'confirmed',
-    statusLabel: '개설 확정',
-    instructorName: '심정보',
-    instructorInitials: 'SJB',
-    instructorAccent: '#C6FF00',
-    weekdayLabel: '매주 화 · 목',
-    timeLabel: '19:30 – 21:30',
-    startDateLabel: '2026.12.01 (예정)',
-    location: '서울/경기 오프라인 (확정 시 안내)',
-    enrolled: 12,
-    minToOpen: 10,
-    capacity: 15,
-    basePrice: 25000,
-    currentPrice: 25000,
-    nextDropHint: '10~15명 스탠다드 · 잔여 3석',
-    calendarDates: [1, 3, 8, 10, 15, 17],
-    isExample: true
-  },
-  {
-    id: 'class-shorts-sound',
-    title: 'AI 숏폼 · 사운드 집중반',
-    cohort: '대규모 · 4회 · 제작 실습',
-    status: 'urgent',
-    statusLabel: '마감 임박',
-    instructorName: '김도현 (예시)',
-    instructorInitials: 'KH',
-    instructorAccent: '#28B8E8',
-    weekdayLabel: '매주 수',
-    timeLabel: '19:30 – 21:30',
-    startDateLabel: '2026.12.09 (예시)',
-    location: '오프라인 스튜디오 (예시)',
-    enrolled: 26,
-    minToOpen: 16,
-    capacity: 30,
-    basePrice: 15000,
-    currentPrice: 15000,
-    nextDropHint: '16~30명 대규모 · 잔여 4석',
-    calendarDates: [9, 16, 23, 30],
-    isExample: true
-  },
-  {
-    id: 'class-nocode-auto',
-    title: '개인 특화 · AI 공모전 실전반',
-    cohort: '개인 특화(1~5명) · 4회',
-    status: 'pending',
-    statusLabel: '개설 대기',
-    instructorName: '이서연 (예시)',
-    instructorInitials: 'SY',
-    instructorAccent: '#F5C400',
-    weekdayLabel: '매주 토',
-    timeLabel: '14:00 – 17:00',
-    startDateLabel: '2026.12.12 (예시)',
-    location: '확정 시 개별 안내',
-    enrolled: 3,
-    minToOpen: 1,
-    capacity: 5,
-    basePrice: 80000,
-    currentPrice: 80000,
-    nextDropHint: '1~5명 소수정예 · 잔여 2석',
-    calendarDates: [12, 19, 26],
-    isExample: true
-  }
-];
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -120,16 +51,75 @@ export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState<number | null>(1);
   const [monthOffset, setMonthOffset] = useState<0 | 1>(0); // 0: 2026.12, 1: 2027.01
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [scheduleClasses, setScheduleClasses] = useState<ScheduleClassItem[]>([]);
 
   useEffect(() => {
     fetchSiteSettings().then(setSiteSettings);
+
+    async function loadPublishedClasses() {
+      try {
+        const q = query(
+          collection(db, 'classes'),
+          where('status', 'in', ['published', 'confirmed', 'started', 'closed'])
+        );
+        const snap = await getDocs(q);
+        const list: ScheduleClassItem[] = snap.docs.map((docSnap) => {
+          const d = docSnap.data();
+          const enrolled = Number(d.enrolledCount || 0);
+          const minToOpen = Number(d.minToOpen || 1);
+          const capacity = Number(d.capacity || 15);
+          const basePrice = Number(d.basePrice || 25000);
+          const remaining = Math.max(0, capacity - enrolled);
+          const mappedStatus: ClassStatus =
+            enrolled >= minToOpen
+              ? remaining <= 3
+                ? 'urgent'
+                : 'confirmed'
+              : 'pending';
+          const statusLabel =
+            mappedStatus === 'confirmed'
+              ? '개설 확정'
+              : mappedStatus === 'urgent'
+                ? '마감 임박'
+                : '개설 대기';
+
+          return {
+            id: docSnap.id,
+            title: String(d.title || 'AI 실무 클래스'),
+            cohort: `${d.category || '클래스'} · ${d.sessionCount || 6}회`,
+            status: mappedStatus,
+            statusLabel,
+            instructorName: String(d.instructorName || 'DO-DAHAM 강사'),
+            instructorInitials: String(d.instructorName || 'AI').slice(0, 2).toUpperCase(),
+            instructorAccent: '#C6FF00',
+            weekdayLabel: String(d.startDate || '일정 협의'),
+            timeLabel: `${d.startTime || '19:30'} – ${d.endTime || '21:30'}`,
+            startDateLabel: String(d.startDate || '확정 시 안내'),
+            location: String(d.location || '확정 시 안내'),
+            enrolled,
+            minToOpen,
+            capacity,
+            basePrice,
+            currentPrice: basePrice,
+            nextDropHint: `정원 ${capacity}명 · 잔여 ${remaining}석`,
+            calendarDates: [],
+            isExample: false
+          };
+        });
+        setScheduleClasses(list);
+      } catch {
+        setScheduleClasses([]);
+      }
+    }
+
+    loadPublishedClasses();
   }, []);
 
   const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
 
   const currentYear = monthOffset === 0 ? 2026 : 2027;
   const currentMonthIndex = monthOffset === 0 ? 11 : 0; // 11 = Dec, 0 = Jan
-  const monthLabel = monthOffset === 0 ? '2026년 12월 (예시)' : '2027년 1월 (예정)';
+  const monthLabel = monthOffset === 0 ? '2026년 12월' : '2027년 1월';
 
   const monthCells = useMemo(
     () => buildMonthCells(currentYear, currentMonthIndex),
@@ -137,17 +127,17 @@ export default function SchedulePage() {
   );
 
   const instructorNames = useMemo(
-    () => ['ALL', ...Array.from(new Set(SCHEDULE_CLASSES.map((c) => c.instructorName)))],
-    []
+    () => ['ALL', ...Array.from(new Set(scheduleClasses.map((c) => c.instructorName)))],
+    [scheduleClasses]
   );
 
   const filteredClasses = useMemo(() => {
-    return SCHEDULE_CLASSES.filter((c) => {
+    return scheduleClasses.filter((c) => {
       const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
       const matchInstructor = instructorFilter === 'ALL' || c.instructorName === instructorFilter;
       return matchStatus && matchInstructor;
     });
-  }, [statusFilter, instructorFilter]);
+  }, [scheduleClasses, statusFilter, instructorFilter]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<number, ScheduleClassItem[]>();
@@ -169,8 +159,8 @@ export default function SchedulePage() {
 
   const selectedDayEvents = selectedDay ? eventsByDay.get(selectedDay) || [] : [];
 
-  const confirmedCount = SCHEDULE_CLASSES.filter((c) => c.status === 'confirmed').length;
-  const totalSessionsThisMonth = SCHEDULE_CLASSES.reduce((acc, c) => acc + c.calendarDates.length, 0);
+  const confirmedCount = scheduleClasses.filter((c) => c.status === 'confirmed').length;
+  const totalSessionsThisMonth = scheduleClasses.reduce((acc, c) => acc + c.calendarDates.length, 0);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
@@ -200,10 +190,7 @@ export default function SchedulePage() {
             <span className="text-[#C6FF00]">신청 현황</span>
           </h1>
           <p className="text-sm sm:text-base text-[#8C8C8C] leading-relaxed max-w-2xl break-keep">
-            모집 중인 클래스의 인원 현황과 개설 확정 여부를 실시간 막대와 달력으로 확인하세요.
-            <span className="block mt-1 text-xs text-[#8C8C8C]/90">
-              * 아래 일정·인원 수치는 개편 구조 확인을 위한 예시이며, 실제 개설 확정 시 공지됩니다.
-            </span>
+            현재 모집 중인 클래스의 인원 현황과 개설 확정 여부를 달력으로 확인하세요.
           </p>
 
           {/* Summary 3 Metrics */}
@@ -212,7 +199,7 @@ export default function SchedulePage() {
               <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#8C8C8C] mb-1.5">
                 OPEN CLASSES
               </div>
-              <div className="ff-disp text-3xl text-[#F2F2F2]">{SCHEDULE_CLASSES.length}개</div>
+              <div className="ff-disp text-3xl text-[#F2F2F2]">{scheduleClasses.length}개</div>
               <div className="text-xs text-[#8C8C8C] mt-1">현재 모집 · 대기 중 과정</div>
             </div>
             <div className="bg-[#11120E] border border-[#C6FF00]/35 rounded-[2px] p-5">

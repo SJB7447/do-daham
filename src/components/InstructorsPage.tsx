@@ -74,54 +74,6 @@ const INSTRUCTORS: InstructorProfile[] = [
     showStats: true,
     lectureHours: BASE_LECTURE_HOURS,
     studentCount: BASE_STUDENTS
-  },
-  {
-    id: 'kim-dohyun-sample',
-    name: '김도현 (예시)',
-    initials: 'KH',
-    isLead: false,
-    isExample: true,
-    badgeText: '예시 프로필',
-    accent: '#28B8E8',
-    role: 'AI 사운드 · 숏폼 디렉터 (예시)',
-    bio: 'AI 음악·보이스 합성과 숏폼 컷 편집 워크플로우를 결합해 브랜드 릴스·유튜브 콘텐츠를 제작하는 파트너 강사 예시 프로필입니다.',
-    detailBio:
-      '실제 파트너 강사 합류 시 실명·실사·검증된 경력으로 교체되는 예시 프로필입니다. AI 영상 제작 과정 중 사운드 디자인, 스토리보드, 컷 리듬 파트를 담당할 수 있는 구성을 보여줍니다.',
-    fields: ['AI 영상 · 연출'],
-    tags: ['AI 사운드 · Suno', '숏폼 연출', '프롬프트 디자인'],
-    credentials: [
-      { label: 'SPECIALTY', text: 'AI BGM · 보이스오버 · 숏폼 리듬 편집 (예시)' },
-      { label: 'WORKFLOW', text: 'Kling · Runway · Suno 연계 숏폼 제작 (예시)' },
-      { label: 'NOTE', text: '실제 파트너 강사 등록 시 프로필 교체 예정' }
-    ],
-    activeDays: ['수', '금'],
-    scheduleTime: '19:30 – 21:30 (예시)',
-    activeClassTitle: 'AI 숏폼 · 사운드 집중반 (예시)',
-    activeClassStatus: '오픈 예정 · 수요 조사'
-  },
-  {
-    id: 'lee-seoyeon-sample',
-    name: '이서연 (예시)',
-    initials: 'SY',
-    isLead: false,
-    isExample: true,
-    badgeText: '예시 프로필',
-    accent: '#F5C400',
-    role: 'AI 업무 자동화 · 노코드 빌더 (예시)',
-    bio: '반복적인 문서 작성, 리서치, 랜딩페이지 제작을 AI와 노코드 툴로 자동화하는 실무 강사 예시 프로필입니다.',
-    detailBio:
-      '실제 파트너 강사 합류 시 실명·실사·검증된 경력으로 교체되는 예시 프로필입니다. 비개발자 직장인·1인 사업자를 위한 AI 업무 루틴과 웹페이지 배포 수업을 안내할 수 있습니다.',
-    fields: ['웹 · 서비스', '업무 자동화'],
-    tags: ['업무 자동화', '노코드 웹 구축', '기획 · 문서 AI'],
-    credentials: [
-      { label: 'SPECIALTY', text: '비개발자 AI 웹 구축 · 업무 루틴 설계 (예시)' },
-      { label: 'WORKFLOW', text: 'LLM 기반 기획서 · 마케팅 카피 자동화 (예시)' },
-      { label: 'NOTE', text: '실제 파트너 강사 등록 시 프로필 교체 예정' }
-    ],
-    activeDays: ['화', '토'],
-    scheduleTime: '14:00 – 17:00 (예시)',
-    activeClassTitle: 'AI 실무 자동화 트랙 (예시)',
-    activeClassStatus: '오픈 예정 · 수요 조사'
   }
 ];
 
@@ -261,10 +213,7 @@ export default function InstructorsPage() {
             <span className="text-[#C6FF00]">직접 만듭니다.</span>
           </h1>
           <p className="text-sm sm:text-base text-[#8C8C8C] leading-relaxed max-w-2xl break-keep">
-            실제 AI 영상과 웹서비스를 제작·수상한 현업 디렉터와 파트너 강사진의 전문 분야 및 만나는 시간을 확인하세요.
-            <span className="block mt-1 text-xs text-[#8C8C8C]/90">
-              * 파트너 강사 B·C는 확장 구조 안내를 위한 예시 프로필이며, 실제 합류 시 실명·경력으로 교체됩니다.
-            </span>
+            실제 AI 영상과 웹서비스를 제작·수상한 현업 디렉터와 승인된 파트너 강사진의 전문 분야 및 만나는 시간을 확인하세요.
           </p>
         </div>
       </header>

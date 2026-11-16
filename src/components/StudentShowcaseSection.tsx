@@ -198,8 +198,6 @@ export default function StudentShowcaseSection() {
     }
   };
 
-  const displayList = works.length > 0 ? works : SAMPLE_STUDENT_WORKS;
-
   return (
     <section className="section" id="showcase">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
@@ -227,9 +225,28 @@ export default function StudentShowcaseSection() {
 
       {loading ? (
         <div className="py-12 text-sm text-[#8C8C8C]">결과물을 불러오는 중...</div>
+      ) : works.length === 0 ? (
+        <div className="border border-dashed border-white/[0.14] bg-[#0E0F0B] rounded-[2px] p-10 text-center">
+          <Sparkles size={22} className="text-[#C6FF00] mx-auto mb-3" />
+          <p className="text-sm font-bold text-[#F2F2F2] mb-1.5">
+            등록된 수료생 완성 결과물을 준비 중입니다.
+          </p>
+          <p className="text-xs text-[#8C8C8C] mb-5">
+            실제 수업 수료 후 수강생이 제작한 AI 영상·웹사이트·업무 자동화 결과물이 순차적으로 등록됩니다.
+          </p>
+          {user && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="hero-cta"
+            >
+              <Plus size={15} /> 첫 수료생 결과물 올리기
+            </button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {displayList.map((item) => (
+          {works.map((item) => (
             <article
               key={item.id}
               className="bg-gradient-to-br from-[#13130C] to-[#0B0B0B] border border-white/[0.1] rounded-[2px] overflow-hidden flex flex-col"

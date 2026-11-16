@@ -110,20 +110,7 @@ interface ClassOperationItem {
   isSample?: boolean;
 }
 
-const SAMPLE_CLASS_OPS: ClassOperationItem[] = [
-  {
-    id: 'sample-1st-ai',
-    title: 'AI 실무 클래스 1기 (예시)',
-    instructorEmail: 'director@do-daham.com',
-    sessionCount: 6,
-    hoursPerSession: 2,
-    enrolledCount: 12,
-    capacity: 24,
-    status: 'confirmed',
-    started: false,
-    isSample: true
-  }
-];
+const SAMPLE_CLASS_OPS: ClassOperationItem[] = [];
 
 interface InviteItem {
   id: string;
@@ -146,30 +133,7 @@ interface InstructorApprovalItem {
   isSample?: boolean;
 }
 
-const SAMPLE_PENDING_INSTRUCTORS: InstructorApprovalItem[] = [
-  {
-    id: 'sample-kh',
-    displayName: '김도현 (예시)',
-    title: 'AI 사운드 · 숏폼 디렉터 (예시)',
-    bio: 'AI 음악·보이스 합성과 숏폼 컷 편집 워크플로우를 결합해 브랜드 릴스·유튜브 콘텐츠를 제작합니다.',
-    tags: ['AI 사운드 · Suno', '숏폼 연출', '프롬프트 디자인'],
-    activeDays: ['수', '금'],
-    scheduleTime: '19:30 – 21:30',
-    status: 'pending',
-    isSample: true
-  },
-  {
-    id: 'sample-sy',
-    displayName: '이서연 (예시)',
-    title: 'AI 업무 자동화 · 노코드 빌더 (예시)',
-    bio: '반복 문서 작성과 랜딩페이지 제작을 AI와 노코드 툴로 자동화하는 실무 강의를 진행합니다.',
-    tags: ['업무 자동화', '노코드 웹 구축'],
-    activeDays: ['화', '토'],
-    scheduleTime: '14:00 – 17:00',
-    status: 'pending',
-    isSample: true
-  }
-];
+const SAMPLE_PENDING_INSTRUCTORS: InstructorApprovalItem[] = [];
 
 async function hashTokenSha256(rawToken: string): Promise<string> {
   const bytes = new TextEncoder().encode(rawToken);
