@@ -315,8 +315,8 @@ export function LetterLimitTextarea({
   const isNear = remaining <= nearThreshold && remaining > 0;
   const isFull = remaining <= 0;
 
-  const strokeColor = isFull ? '#E02898' : isNear ? '#F5C400' : '#C6FF00';
-  const countColor = isFull ? '#E02898' : isNear ? '#F5C400' : '#8C8C8C';
+  const strokeColor = isFull ? 'var(--magenta)' : isNear ? 'var(--amber)' : 'var(--acid)';
+  const countColor = isFull ? 'var(--magenta)' : isNear ? 'var(--amber)' : 'var(--dim-aa)';
 
   return (
     <div ref={wrapRef} className="relative">
@@ -359,7 +359,7 @@ export function LetterLimitTextarea({
             cy="12"
             r="9"
             fill="none"
-            stroke="rgba(255,255,255,0.14)"
+            stroke="var(--div)"
             strokeWidth="2.6"
           />
           <circle

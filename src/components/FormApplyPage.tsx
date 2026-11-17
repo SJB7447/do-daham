@@ -22,7 +22,6 @@ import { LetterLimitTextarea } from './LetterLimitTextarea';
 import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 import {
   createFormSubmission,
-  FORM_TYPE_COLORS,
   FORM_TYPE_LABELS,
   FormSubmissionType
 } from '../lib/formSubmissions';
@@ -433,7 +432,13 @@ export default function FormApplyPage() {
     }
   };
 
-  const accentColor = FORM_TYPE_COLORS[activeMeta.type];
+  const FORM_ACCENT_VAR: Record<FormSubmissionType, string> = {
+    class_apply: 'var(--acid)',
+    instructor_recruit: 'var(--cyan)',
+    class_inquiry: 'var(--amber)',
+    project_inquiry: 'var(--magenta)'
+  };
+  const accentColor = FORM_ACCENT_VAR[activeMeta.type];
   const messageLimit =
     activeSlug === 'project-inquiry' ? 800 : activeSlug === 'class-apply' ? 500 : 600;
 

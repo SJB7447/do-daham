@@ -2286,12 +2286,25 @@ html[data-theme="light"] .bg-\[\#0A0A0A\] {
 html[data-theme="light"] .bg-\[\#0E0E0E\],
 html[data-theme="light"] .bg-\[\#0D0E0A\],
 html[data-theme="light"] .bg-\[\#0E0F0B\],
+html[data-theme="light"] .bg-\[\#0E0E11\],
+html[data-theme="light"] .bg-\[\#0E0E11\]\/90,
 html[data-theme="light"] .bg-\[\#11120E\],
+html[data-theme="light"] .bg-\[\#111116\],
+html[data-theme="light"] .bg-\[\#11130C\],
 html[data-theme="light"] .bg-\[\#121215\],
+html[data-theme="light"] .bg-\[\#121215\]\/90,
+html[data-theme="light"] .bg-\[\#141414\],
 html[data-theme="light"] .bg-\[\#141417\],
+html[data-theme="light"] .bg-\[\#141418\],
+html[data-theme="light"] .bg-\[\#161619\],
+html[data-theme="light"] .bg-\[\#181B10\],
 html[data-theme="light"] .bg-\[\#101010\],
+html[data-theme="light"] .bg-\[\#0C0C0F\],
+html[data-theme="light"] .bg-\[\#070709\],
 html[data-theme="light"] .bg-\[\#0F100C\],
-html[data-theme="light"] .bg-\[\#0F120C\] {
+html[data-theme="light"] .bg-\[\#0F120C\],
+html[data-theme="light"] .bg-neutral-900,
+html[data-theme="light"] .bg-neutral-800 {
   background-color: #FFFFFF;
 }
 html[data-theme="light"] .bg-\[\#12160A\],
@@ -2303,12 +2316,41 @@ html[data-theme="light"] .bg-\[\#12110A\] {
 html[data-theme="light"] .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, #FFFFFF, #ECEAE3);
 }
+html[data-theme="light"] .from-\[\#0A0A0A\] {
+  --tw-gradient-from: rgba(244, 243, 238, 0.96);
+}
+html[data-theme="light"] .via-\[\#0A0A0A\]\/40 {
+  --tw-gradient-via: rgba(244, 243, 238, 0.52);
+}
+html[data-theme="light"] .via-\[\#0A0A0A\]\/60 {
+  --tw-gradient-via: rgba(244, 243, 238, 0.72);
+}
+html[data-theme="light"] .to-black\/20 {
+  --tw-gradient-to: rgba(20, 22, 18, 0.05);
+}
+html[data-theme="light"] .from-\[\#121215\] {
+  --tw-gradient-from: rgba(255, 255, 255, 0.85);
+}
+html[data-theme="light"] .from-\[\#13130C\],
+html[data-theme="light"] .from-\[\#14180A\],
+html[data-theme="light"] .from-\[\#12160A\],
+html[data-theme="light"] .from-\[\#121809\] {
+  --tw-gradient-from: #FFFFFF;
+}
+html[data-theme="light"] .to-\[\#0B0B0B\] {
+  --tw-gradient-to: #ECEAE3;
+}
+html[data-theme="light"] .action-card img {
+  mix-blend-mode: normal;
+  opacity: 0.34;
+}
 html[data-theme="light"] .bg-black {
   background-color: #FFFFFF;
 }
 html[data-theme="light"] .bg-black\/40,
 html[data-theme="light"] .bg-black\/45,
 html[data-theme="light"] .bg-black\/50,
+html[data-theme="light"] .bg-black\/55,
 html[data-theme="light"] .bg-black\/60,
 html[data-theme="light"] .bg-black\/70 {
   background-color: rgba(236, 234, 227, 0.9);
@@ -2322,13 +2364,14 @@ html[data-theme="light"] .bg-black\/90 {
 }
 html[data-theme="light"] .bg-white\/5,
 html[data-theme="light"] .bg-white\/10,
+html[data-theme="light"] .bg-white\/\[0\.01\],
 html[data-theme="light"] .bg-white\/\[0\.02\],
 html[data-theme="light"] .bg-white\/\[0\.03\],
 html[data-theme="light"] .bg-white\/\[0\.04\],
 html[data-theme="light"] .bg-white\/\[0\.06\],
 html[data-theme="light"] .bg-white\/\[0\.08\],
 html[data-theme="light"] .bg-white\/\[0\.14\] {
-  background-color: rgba(20, 22, 18, 0.08);
+  background-color: rgba(20, 22, 18, 0.06);
 }
 html[data-theme="light"] .bg-white\/25 {
   background-color: rgba(20, 22, 18, 0.25);
@@ -2340,6 +2383,42 @@ html[data-theme="light"] .bg-\[\#C6FF00\] {
 html[data-theme="light"] .bg-\[\#C6FF00\] .text-\[\#0A0A0A\],
 html[data-theme="light"] .bg-\[\#C6FF00\].text-\[\#0A0A0A\] {
   color: #FFFFFF;
+}
+html[data-theme="light"] .bg-\[\#C6FF00\]\/5,
+html[data-theme="light"] .bg-\[\#C6FF00\]\/10,
+html[data-theme="light"] .bg-\[\#C6FF00\]\/12,
+html[data-theme="light"] .bg-\[\#C6FF00\]\/15,
+html[data-theme="light"] .bg-\[\#C6FF00\]\/20 {
+  background-color: rgba(29, 111, 44, 0.1);
+}
+html[data-theme="light"] .bg-\[\#28C8F0\],
+html[data-theme="light"] .bg-\[\#28B8E8\] {
+  background-color: #0D659E;
+  color: #FFFFFF;
+}
+html[data-theme="light"] .bg-\[\#28C8F0\].text-\[\#0A0A0A\],
+html[data-theme="light"] .bg-\[\#28C8F0\].text-black,
+html[data-theme="light"] .bg-\[\#28B8E8\].text-black {
+  color: #FFFFFF;
+}
+html[data-theme="light"] .bg-\[\#28C8F0\]\/10,
+html[data-theme="light"] .bg-\[\#28C8F0\]\/15,
+html[data-theme="light"] .bg-\[\#28B8E8\]\/20 {
+  background-color: rgba(13, 101, 158, 0.12);
+}
+html[data-theme="light"] .bg-\[\#F5C400\] {
+  background-color: #9C5300;
+  color: #FFFFFF;
+}
+html[data-theme="light"] .bg-\[\#F5C400\].text-\[\#0A0A0A\] {
+  color: #FFFFFF;
+}
+html[data-theme="light"] .bg-\[\#F5C400\]\/15 {
+  background-color: rgba(156, 83, 0, 0.12);
+}
+html[data-theme="light"] .bg-\[\#E02898\]\/10,
+html[data-theme="light"] .bg-\[\#E02898\]\/20 {
+  background-color: rgba(166, 23, 99, 0.12);
 }
 html[data-theme="light"] .text-\[\#F2F2F2\],
 html[data-theme="light"] .text-\[\#F2F2F2\]\/90,
@@ -2394,12 +2473,48 @@ html[data-theme="light"] .divide-white\/\[0\.08\] > :not(:last-child) {
   border-color: rgba(20, 22, 18, 0.12);
 }
 html[data-theme="light"] .border-\[\#C6FF00\],
+html[data-theme="light"] .border-\[\#C6FF00\]\/40,
 html[data-theme="light"] .border-\[\#C6FF00\]\/45,
 html[data-theme="light"] .border-\[\#C6FF00\]\/30,
 html[data-theme="light"] .border-\[\#C6FF00\]\/35,
 html[data-theme="light"] .border-\[\#C6FF00\]\/25,
-html[data-theme="light"] .focus\:border-\[\#C6FF00\]:focus {
+html[data-theme="light"] .border-\[\#C6FF00\]\/20,
+html[data-theme="light"] .focus\:border-\[\#C6FF00\]:focus,
+html[data-theme="light"] .hover\:border-\[\#C6FF00\]:hover,
+html[data-theme="light"] .hover\:border-\[\#C6FF00\]\/50:hover {
   border-color: #1D6F2C;
+}
+html[data-theme="light"] .border-\[\#28C8F0\]\/30,
+html[data-theme="light"] .border-\[\#28C8F0\]\/40,
+html[data-theme="light"] .border-\[\#28B8E8\] {
+  border-color: rgba(13, 101, 158, 0.45);
+}
+html[data-theme="light"] .hover\:text-white:hover,
+html[data-theme="light"] .group-hover\:text-white:is(:where(.group):hover *),
+html[data-theme="light"] .hover\:text-\[\#F2F2F2\]:hover {
+  color: #141612;
+}
+html[data-theme="light"] .hover\:text-\[\#C6FF00\]:hover,
+html[data-theme="light"] .group-hover\:text-\[\#C6FF00\]:is(:where(.group):hover *),
+html[data-theme="light"] .group-hover\/watch\:text-\[\#C6FF00\]:is(:where(.group\/watch):hover *) {
+  color: #1D6F2C;
+}
+html[data-theme="light"] .hover\:border-white:hover,
+html[data-theme="light"] .hover\:border-white\/25:hover,
+html[data-theme="light"] .hover\:border-white\/30:hover,
+html[data-theme="light"] .hover\:border-white\/35:hover,
+html[data-theme="light"] .hover\:border-white\/40:hover,
+html[data-theme="light"] .hover\:border-white\/50:hover,
+html[data-theme="light"] .hover\:border-white\/\[0\.25\]:hover {
+  border-color: rgba(20, 22, 18, 0.35);
+}
+html[data-theme="light"] .bg-\[\#C6FF00\].hover\:bg-white:hover,
+html[data-theme="light"] .bg-\[\#28C8F0\].hover\:bg-white:hover {
+  background-color: #141612;
+  color: #FFFFFF;
+}
+html[data-theme="light"] .hover\:shadow-\[0_20px_40px_rgba\(0\,0\,0\,0\.7\)\]:hover {
+  --tw-shadow: 0 16px 36px rgba(20, 22, 18, 0.12);
 }
 html[data-theme="light"] .hero-cta .text-white,
 html[data-theme="light"] .nav-watch .text-white,
@@ -2409,7 +2524,4 @@ html[data-theme="light"] a.bg-\[\#C6FF00\],
 html[data-theme="light"] .bg-\[\#1D6F2C\].text-white,
 html[data-theme="light"] .bg-emerald-500.text-white {
   color: #FFFFFF;
-}
-html[data-theme="light"] .from-\[\#121215\] {
-  --tw-gradient-from: rgba(255, 255, 255, 0.82);
 }

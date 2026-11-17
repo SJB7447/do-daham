@@ -49,6 +49,15 @@ const FIELD_OPTIONS: { value: FieldFilter; label: string }[] = [
   { value: '업무 자동화', label: '업무 자동화' }
 ];
 
+function toThemeAccent(hex: string): string {
+  const normalized = hex.trim().toUpperCase();
+  if (normalized === '#C6FF00') return 'var(--acid)';
+  if (normalized === '#28B8E8' || normalized === '#28C8F0') return 'var(--cyan)';
+  if (normalized === '#F5C400') return 'var(--amber)';
+  if (normalized === '#E02898') return 'var(--magenta)';
+  return hex;
+}
+
 const INSTRUCTORS: InstructorProfile[] = [
   {
     id: 'sim-jeongbo',
@@ -339,14 +348,14 @@ export default function InstructorsPage() {
 
                     <div
                       className="inst-avatar-circle"
-                      style={{ borderColor: inst.accent }}
+                      style={{ borderColor: toThemeAccent(inst.accent) }}
                     >
                       {inst.isLead ? (
                         <CrystalCube size={56} pfx={`inst-${inst.id}`} />
                       ) : (
                         <span
                           className="ff-disp text-2xl tracking-wider"
-                          style={{ color: inst.accent }}
+                          style={{ color: toThemeAccent(inst.accent) }}
                         >
                           {inst.initials}
                         </span>
@@ -367,11 +376,10 @@ export default function InstructorsPage() {
 
                     {inst.showStats && ((inst.lectureHours || 0) > 0 || (inst.studentCount || 0) > 0) && (
                       <div
-                        className="inline-flex items-center gap-2 text-[11px] font-extrabold px-2.5 py-1 rounded-[2px] border mb-3 self-start"
+                        className="inline-flex items-center gap-2 text-[11px] font-extrabold px-2.5 py-1 rounded-[2px] border mb-3 self-start bg-white/[0.04]"
                         style={{
-                          color: inst.accent,
-                          borderColor: `${inst.accent}55`,
-                          backgroundColor: `${inst.accent}12`
+                          color: toThemeAccent(inst.accent),
+                          borderColor: toThemeAccent(inst.accent)
                         }}
                       >
                         강의 {(inst.lectureHours || 0).toLocaleString('ko-KR')}시간+ · 수강생{' '}
@@ -399,7 +407,7 @@ export default function InstructorsPage() {
                         <div key={cred.label} className="text-xs leading-relaxed">
                           <span
                             className="inline-block font-extrabold tracking-[0.12em] mr-2"
-                            style={{ color: inst.accent }}
+                            style={{ color: toThemeAccent(inst.accent) }}
                           >
                             {cred.label}
                           </span>
@@ -421,13 +429,14 @@ export default function InstructorsPage() {
                       <div className="inst-day-strip" aria-label="강의 가능 요일">
                         {WEEK_DAYS.map((day) => {
                           const isActive = inst.activeDays.includes(day);
+                          const accentVar = toThemeAccent(inst.accent);
                           return (
                             <span
                               key={day}
                               className={`inst-day-cell ${isActive ? 'is-active' : ''}`}
                               style={
                                 isActive
-                                  ? { backgroundColor: inst.accent, color: '#0A0A0A', borderColor: inst.accent }
+                                  ? { backgroundColor: accentVar, color: 'var(--bg)', borderColor: accentVar }
                                   : undefined
                               }
                             >
@@ -446,7 +455,7 @@ export default function InstructorsPage() {
                       <div className="text-sm font-bold text-[#F2F2F2] mb-0.5">
                         {inst.activeClassTitle}
                       </div>
-                      <div className="text-xs font-semibold" style={{ color: inst.accent }}>
+                      <div className="text-xs font-semibold" style={{ color: toThemeAccent(inst.accent) }}>
                         {inst.activeClassStatus}
                       </div>
                     </div>
@@ -553,11 +562,15 @@ export default function InstructorsPage() {
               <div>
                 <span
                   className="inline-block text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1 rounded-[2px] mb-2.5"
-                  style={{
-                    backgroundColor: selectedInstructor.isLead ? '#C6FF00' : 'transparent',
-                    color: selectedInstructor.isLead ? '#0A0A0A' : selectedInstructor.accent,
-                    border: selectedInstructor.isLead ? '1px solid #C6FF00' : `1px solid ${selectedInstructor.accent}`
-                  }}
+                  style={
+                    selectedInstructor.isLead
+                      ? { backgroundColor: 'var(--acid)', color: 'var(--bg)', border: '1px solid var(--acid)' }
+                      : {
+                          backgroundColor: 'transparent',
+                          color: toThemeAccent(selectedInstructor.accent),
+                          border: `1px solid ${toThemeAccent(selectedInstructor.accent)}`
+                        }
+                  }
                 >
                   {selectedInstructor.badgeText}
                 </span>
@@ -591,10 +604,10 @@ export default function InstructorsPage() {
                     <CheckCircle2
                       size={16}
                       className="shrink-0 mt-0.5"
-                      style={{ color: selectedInstructor.accent }}
+                      style={{ color: toThemeAccent(selectedInstructor.accent) }}
                     />
                     <span className="break-keep">
-                      <strong className="text-xs tracking-wider mr-1.5" style={{ color: selectedInstructor.accent }}>
+                      <strong className="text-xs tracking-wider mr-1.5" style={{ color: toThemeAccent(selectedInstructor.accent) }}>
                         {cred.label}
                       </strong>
                       {cred.text}
@@ -605,7 +618,7 @@ export default function InstructorsPage() {
 
               <div className="bg-black/40 border border-white/[0.08] rounded-[2px] p-4">
                 <div className="text-[10px] font-extrabold tracking-[0.14em] text-[#8C8C8C] mb-1.5 flex items-center gap-1.5">
-                  <Sparkles size={12} style={{ color: selectedInstructor.accent }} /> 담당 클래스 · 가능 시간
+                  <Sparkles size={12} style={{ color: toThemeAccent(selectedInstructor.accent) }} /> 담당 클래스 · 가능 시간
                 </div>
                 <div className="text-sm font-bold text-[#F2F2F2] mb-1">
                   {selectedInstructor.activeClassTitle}

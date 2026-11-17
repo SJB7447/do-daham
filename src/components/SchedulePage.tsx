@@ -96,7 +96,7 @@ export default function SchedulePage() {
             statusLabel,
             instructorName: String(d.instructorName || 'DO-DAHAM 강사'),
             instructorInitials: String(d.instructorName || 'AI').slice(0, 2).toUpperCase(),
-            instructorAccent: '#C6FF00',
+            instructorAccent: 'var(--acid)',
             weekdayLabel: String(d.startDate || '일정 협의'),
             timeLabel: `${d.startTime || '19:30'} – ${d.endTime || '21:30'}`,
             startDateLabel: String(d.startDate || '확정 시 안내'),
@@ -546,7 +546,7 @@ export default function SchedulePage() {
                           className="h-full transition-all"
                           style={{
                             width: `${fillPercent}%`,
-                            backgroundColor: isConfirmed ? '#C6FF00' : '#F2F2F2'
+                            backgroundColor: isConfirmed ? 'var(--acid)' : 'var(--ink)'
                           }}
                         />
                         {/* Min-to-open marker */}
