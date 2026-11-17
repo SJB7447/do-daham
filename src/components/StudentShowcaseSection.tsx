@@ -13,7 +13,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ExternalLink, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
-import { LetterLimitTextarea } from './LetterLimitTextarea';
+import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 export interface StudentWorkItem {
   id: string;
@@ -352,13 +352,14 @@ export default function StudentShowcaseSection() {
             <form onSubmit={handleCreateWork} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[#8C8C8C] mb-1">결과물 제목 *</label>
-                <input
+                <LetterLimitInput
                   type="text"
                   required
+                  limit={80}
+                  nearThreshold={15}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={setTitle}
                   placeholder="예: 1기 수료생 카페 홍보 AI 숏폼"
-                  className="w-full min-h-[44px] px-3 bg-black border border-white/[0.18] rounded-[2px] text-sm text-white focus:border-[#C6FF00] outline-none"
                 />
               </div>
 
@@ -377,12 +378,13 @@ export default function StudentShowcaseSection() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-[#8C8C8C] mb-1">수강생 표기</label>
-                  <input
+                  <LetterLimitInput
                     type="text"
+                    limit={50}
+                    nearThreshold={10}
                     value={studentLabel}
-                    onChange={(e) => setStudentLabel(e.target.value)}
+                    onChange={setStudentLabel}
                     placeholder="예: 1기 · 소상공인 대표"
-                    className="w-full min-h-[44px] px-3 bg-black border border-white/[0.18] rounded-[2px] text-sm text-white focus:border-[#C6FF00] outline-none"
                   />
                 </div>
               </div>

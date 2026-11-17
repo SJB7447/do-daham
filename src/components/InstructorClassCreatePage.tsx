@@ -7,7 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
-import { LetterLimitTextarea } from './LetterLimitTextarea';
+import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -302,12 +302,13 @@ export default function InstructorClassCreatePage() {
                   <>
                     <div>
                       <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">수업 제목 *</label>
-                      <input
+                      <LetterLimitInput
                         type="text"
+                        limit={80}
+                        nearThreshold={15}
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        onChange={setTitle}
                         placeholder="예: AI 숏폼 · 사운드 실전 클래스"
-                        className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                       />
                     </div>
                     <div>
@@ -340,11 +341,12 @@ export default function InstructorClassCreatePage() {
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">추천 대상</label>
-                        <input
+                        <LetterLimitInput
                           type="text"
+                          limit={100}
+                          nearThreshold={15}
                           value={audience}
-                          onChange={(e) => setAudience(e.target.value)}
-                          className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
+                          onChange={setAudience}
                         />
                       </div>
                     </div>
@@ -412,11 +414,12 @@ export default function InstructorClassCreatePage() {
 
                     <div>
                       <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">수업 장소</label>
-                      <input
+                      <LetterLimitInput
                         type="text"
+                        limit={100}
+                        nearThreshold={15}
                         value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
+                        onChange={setLocation}
                       />
                     </div>
 
@@ -525,27 +528,29 @@ export default function InstructorClassCreatePage() {
                       <div className="text-xs font-bold text-[#8C8C8C]">회차별 강의 계획 및 OUTPUT</div>
                       {curriculum.map((item, idx) => (
                         <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 bg-black/40 border border-white/[0.08] rounded-[2px]">
-                          <input
+                          <LetterLimitInput
                             type="text"
+                            limit={80}
+                            nearThreshold={15}
                             value={item.title}
-                            onChange={(e) =>
+                            onChange={(next) =>
                               setCurriculum((prev) =>
-                                prev.map((c, i) => (i === idx ? { ...c, title: e.target.value } : c))
+                                prev.map((c, i) => (i === idx ? { ...c, title: next } : c))
                               )
                             }
                             placeholder={`${idx + 1}회차 주제`}
-                            className="min-h-[44px] px-3 bg-black border border-white/[0.14] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                           />
-                          <input
+                          <LetterLimitInput
                             type="text"
+                            limit={80}
+                            nearThreshold={15}
                             value={item.output}
-                            onChange={(e) =>
+                            onChange={(next) =>
                               setCurriculum((prev) =>
-                                prev.map((c, i) => (i === idx ? { ...c, output: e.target.value } : c))
+                                prev.map((c, i) => (i === idx ? { ...c, output: next } : c))
                               )
                             }
                             placeholder="완성 결과물 (예: 숏폼 1편)"
-                            className="min-h-[44px] px-3 bg-black border border-white/[0.14] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                           />
                         </div>
                       ))}

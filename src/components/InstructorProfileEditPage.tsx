@@ -8,7 +8,7 @@ import { auth, db, storage } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
-import { LetterLimitTextarea } from './LetterLimitTextarea';
+import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 type Weekday = '일' | '월' | '화' | '수' | '목' | '금' | '토';
 const WEEK_DAYS: Weekday[] = ['일', '월', '화', '수', '목', '금', '토'];
@@ -398,12 +398,13 @@ export default function InstructorProfileEditPage() {
                     <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">
                       공개 이름 *
                     </label>
-                    <input
+                    <LetterLimitInput
                       type="text"
+                      limit={40}
+                      nearThreshold={8}
                       value={form.displayName}
-                      onChange={(e) => setForm((p) => ({ ...p, displayName: e.target.value }))}
+                      onChange={(next) => setForm((p) => ({ ...p, displayName: next }))}
                       placeholder="예: 심정보"
-                      className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                     />
                   </div>
                   <div>
@@ -424,12 +425,13 @@ export default function InstructorProfileEditPage() {
                         추천 예시 넣기
                       </button>
                     </div>
-                    <input
+                    <LetterLimitInput
                       type="text"
+                      limit={80}
+                      nearThreshold={15}
                       value={form.title}
-                      onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                      onChange={(next) => setForm((p) => ({ ...p, title: next }))}
                       placeholder="예: DO-DAHAM 대표 · AI 영상·웹 실무 디렉터"
-                      className="w-full min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                     />
                   </div>
                 </div>
@@ -513,12 +515,14 @@ export default function InstructorProfileEditPage() {
                   <div className="space-y-2.5">
                     {form.credentials.map((cred, idx) => (
                       <div key={idx} className="flex gap-2">
-                        <input
+                        <LetterLimitInput
                           type="text"
+                          limit={100}
+                          nearThreshold={15}
                           value={cred}
-                          onChange={(e) => updateCredential(idx, e.target.value)}
+                          onChange={(next) => updateCredential(idx, next)}
                           placeholder="예: 경기관광공사 AI 영상 공모전 입상"
-                          className="flex-1 min-h-[48px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
+                          className="flex-1"
                         />
                         {form.credentials.length > 1 && (
                           <button
@@ -567,12 +571,13 @@ export default function InstructorProfileEditPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-[#8C8C8C] mb-2">선호 시간대</label>
-                    <input
+                    <LetterLimitInput
                       type="text"
+                      limit={60}
+                      nearThreshold={10}
                       value={form.scheduleTime}
-                      onChange={(e) => setForm((p) => ({ ...p, scheduleTime: e.target.value }))}
+                      onChange={(next) => setForm((p) => ({ ...p, scheduleTime: next }))}
                       placeholder="예: 19:30 – 21:30"
-                      className="w-full min-h-[44px] px-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                     />
                   </div>
                 </div>

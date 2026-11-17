@@ -21,6 +21,7 @@ import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../l
 import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
 import { fetchFormSubmissions } from '../lib/formSubmissions';
 import AdminSubmissionsPanel from './AdminSubmissionsPanel';
+import { LetterLimitTextarea } from './LetterLimitTextarea';
 import mCubeLogo from '../assets/m_cube_logo.png';
 
 const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
@@ -1535,12 +1536,13 @@ export default function AdminDashboard() {
 
               <div className="flex flex-col gap-1.5 mb-6">
                 <label className="text-xs font-bold opacity-45 uppercase tracking-[0.15em]">Work Description</label>
-                <textarea
+                <LetterLimitTextarea
                   value={portfolioData.masterpiece.descriptionSub}
-                  onChange={e => handleMasterpieceChange('descriptionSub', e.target.value)}
+                  onChange={next => handleMasterpieceChange('descriptionSub', next)}
                   placeholder='e.g. "Code:M Studio"가 제작한 경기도의 새로운 매력.'
                   rows={2}
-                  className="bg-black border border-[#f4f4f0]/15 p-3.5 text-[#f4f4f0] font-bold outline-none focus:border-[#ccff00] transition-colors text-sm resize-none"
+                  limit={200}
+                  nearThreshold={25}
                 />
               </div>
 

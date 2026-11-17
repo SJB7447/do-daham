@@ -18,7 +18,7 @@ import {
 import { db } from '../lib/firebase';
 import { SiteHeader } from './SiteHeader';
 import { CrystalCube } from './CrystalCube';
-import { LetterLimitTextarea } from './LetterLimitTextarea';
+import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 import {
   createFormSubmission,
@@ -646,18 +646,18 @@ export default function FormApplyPage() {
                         ? '브랜드 · 업체명 (선택)'
                         : '기업 · 기관명 (개인인 경우 비워두셔도 됩니다)'}
                     </label>
-                    <input
+                    <LetterLimitInput
                       id="form-org"
                       type="text"
-                      maxLength={120}
+                      limit={120}
+                      nearThreshold={20}
                       value={organization}
-                      onChange={(e) => setOrganization(e.target.value)}
+                      onChange={setOrganization}
                       placeholder={
                         activeSlug === 'project-inquiry'
                           ? '예: 스튜디오 다함 / 개인 브랜드'
                           : '예: 고양시청, OO기업 마케팅팀'
                       }
-                      className="p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                     />
                   </div>
                 )}
@@ -670,15 +670,15 @@ export default function FormApplyPage() {
                         ? '수강생 성함 *'
                         : '담당자 / 신청자 성함 *'}
                   </label>
-                  <input
+                  <LetterLimitInput
                     id="form-name"
                     type="text"
                     required
-                    maxLength={80}
+                    limit={80}
+                    nearThreshold={15}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={setName}
                     placeholder="홍길동"
-                    className="p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                   />
                 </div>
 
@@ -686,15 +686,15 @@ export default function FormApplyPage() {
                   <label htmlFor="form-contact" className="text-xs font-bold text-[#F2F2F2]">
                     연락처 (휴대폰 번호 또는 카카오톡 ID) *
                   </label>
-                  <input
+                  <LetterLimitInput
                     id="form-contact"
                     type="text"
                     required
-                    maxLength={120}
+                    limit={120}
+                    nearThreshold={20}
                     value={contact}
-                    onChange={(e) => setContact(e.target.value)}
+                    onChange={setContact}
                     placeholder="010-0000-0000"
-                    className="p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                   />
                 </div>
 
@@ -1083,18 +1083,18 @@ export default function FormApplyPage() {
                     ? '희망 납품 일정 (선택)'
                     : '선호 요일 · 시간대 / 희망 장소 (선택)'}
                 </label>
-                <input
+                <LetterLimitInput
                   id="form-schedule"
                   type="text"
-                  maxLength={200}
+                  limit={200}
+                  nearThreshold={30}
                   value={schedulePref}
-                  onChange={(e) => setSchedulePref(e.target.value)}
+                  onChange={setSchedulePref}
                   placeholder={
                     activeSlug === 'project-inquiry'
                       ? '예: 3주 이내 납품 희망, 12월 중 런칭 예정'
                       : '예: 평일 저녁 7시~9시 / 주말 오후 (고양·서울)'
                   }
-                  className="p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-sm text-[#F2F2F2] outline-none focus:border-[#C6FF00]"
                 />
               </div>
 

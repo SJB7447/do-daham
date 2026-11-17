@@ -10,6 +10,7 @@ import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import { ActivityItem, ActivityCategory } from '../types/activity';
 import FaceBlurStudioModal from './FaceBlurStudioModal';
+import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 import { 
   DEFAULT_ACTIVITIES, 
   fetchActivitiesFromCloud, 
@@ -684,26 +685,28 @@ export default function ActivityPage() {
 
               <div>
                 <label className="block text-neutral-400 mb-1 font-bold">제목 / 강의명 / 헤드라인 *</label>
-                <input
+                <LetterLimitInput
                   type="text"
                   required
+                  limit={100}
+                  nearThreshold={15}
                   placeholder="예: 공공기관 AI 프롬프트 엔지니어링 집중 특강"
                   value={formData.title}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-black/60 border border-white/15 focus:border-[#C6FF00] rounded-md px-3 py-2.5 text-white outline-none transition-colors"
+                  onChange={next => setFormData({ ...formData, title: next })}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-neutral-400 mb-1 font-bold">진행 기관 / 매체명 *</label>
-                  <input
+                  <LetterLimitInput
                     type="text"
                     required
+                    limit={60}
+                    nearThreshold={12}
                     placeholder="예: 서울산업진흥원, 한국경제"
                     value={formData.organization}
-                    onChange={e => setFormData({ ...formData, organization: e.target.value })}
-                    className="w-full bg-black/60 border border-white/15 focus:border-[#C6FF00] rounded-md px-3 py-2.5 text-white outline-none transition-colors"
+                    onChange={next => setFormData({ ...formData, organization: next })}
                   />
                 </div>
                 <div>
@@ -857,12 +860,13 @@ export default function ActivityPage() {
 
               <div>
                 <label className="block text-neutral-400 mb-1 font-bold">핵심 요약 / 강의 소개</label>
-                <textarea
+                <LetterLimitTextarea
                   rows={3}
+                  limit={400}
+                  nearThreshold={40}
                   placeholder="강의의 핵심 주제, 수강생 반응, 또는 기사의 주요 인용구를 작성해주세요."
                   value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-black/60 border border-white/15 focus:border-[#C6FF00] rounded-md px-3 py-2.5 text-white outline-none transition-colors resize-none"
+                  onChange={next => setFormData({ ...formData, description: next })}
                 />
               </div>
 

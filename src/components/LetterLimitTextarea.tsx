@@ -12,6 +12,18 @@ interface LetterLimitTextareaProps {
   className?: string;
 }
 
+export interface LetterLimitInputProps {
+  id?: string;
+  type?: 'text' | 'tel' | 'email' | 'url';
+  value: string;
+  onChange: (value: string) => void;
+  limit?: number;
+  nearThreshold?: number;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+}
+
 interface SpringState {
   x: number;
   v: number;
@@ -44,19 +56,8 @@ function stepSpring(s: SpringState, dt: number) {
   s.x += s.v * dt;
 }
 
-export function LetterLimitTextarea({
-  id,
-  value,
-  onChange,
-  limit = 100,
-  nearThreshold = 15,
-  rows = 3,
-  placeholder,
-  required = false,
-  className = ''
-}: LetterLimitTextareaProps) {
+function useLetterLimitPhysics(value: string, limit: number, nearThreshold: number, singleLine = false) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const taRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<SVGCircleElement>(null);
   const meterRef = useRef<SVGSVGElement>(null);
@@ -84,9 +85,10 @@ export function LetterLimitTextarea({
     return () => mq.removeEventListener('change', onChangeMq);
   }, []);
 
-  // Update spring target whenever value changes externally
+  // Update spring target and clear length state when value changes externally
   useEffect(() => {
     springsRef.current.F.t = Math.min(1, value.length / limit);
+    prevLenRef.current = value.length;
   }, [value, limit]);
 
   // Physics rAF loop
@@ -101,7 +103,7 @@ export function LetterLimitTextarea({
       const wrap = wrapRef.current;
       const boxRect = wrap?.getBoundingClientRect();
       const width = boxRect ? boxRect.width : 320;
-      const floorY = boxRect ? boxRect.height + 14 : 110;
+      const floorY = boxRect ? boxRect.height + (singleLine ? 8 : 14) : singleLine ? 56 : 110;
 
       const { F, CP, SH } = springsRef.current;
       const sub = 4;
@@ -150,7 +152,7 @@ export function LetterLimitTextarea({
               l.bin = b;
               binsRef.current[b] = Math.min(3, (binsRef.current[b] || 0) + 1);
               l.r = Math.round(l.r / 90) * 90 + (Math.random() - 0.5) * 32;
-              l.el.style.color = '#8C8C8C';
+              l.el.style.color = 'var(--dim-aa, #8C8C8C)';
             }
           }
         });
@@ -186,7 +188,7 @@ export function LetterLimitTextarea({
 
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, singleLine]);
 
   // Cleanup DOM spans on unmount
   useEffect(() => {
@@ -209,7 +211,7 @@ export function LetterLimitTextarea({
   const getEndOfTextCoords = (currentText: string): [number, number] => {
     const mirror = mirrorRef.current;
     const wrap = wrapRef.current;
-    if (!mirror || !wrap) return [180, 36];
+    if (!mirror || !wrap) return [180, singleLine ? 24 : 36];
 
     mirror.textContent = currentText;
     const marker = document.createElement('span');
@@ -218,7 +220,10 @@ export function LetterLimitTextarea({
 
     const wrapRect = wrap.getBoundingClientRect();
     const markerRect = marker.getBoundingClientRect();
-    return [markerRect.left - wrapRect.left, markerRect.top - wrapRect.top + 12];
+    const rawX = markerRect.left - wrapRect.left;
+    const clampedX = singleLine ? Math.min(rawX, Math.max(40, wrapRect.width - 96)) : rawX;
+    const yCoord = singleLine ? wrapRect.height * 0.5 : markerRect.top - wrapRect.top + 12;
+    return [clampedX, yCoord];
   };
 
   const dropExtraChars = (kept: string, extra: string) => {
@@ -245,7 +250,7 @@ export function LetterLimitTextarea({
       el.style.fontSize = '15px';
       el.style.fontWeight = '700';
       el.style.lineHeight = '24px';
-      el.style.color = '#E02898';
+      el.style.color = 'var(--magenta, #E02898)';
       el.style.pointerEvents = 'none';
       el.style.willChange = 'transform, opacity';
       el.style.transition = 'color 0.45s';
@@ -274,21 +279,8 @@ export function LetterLimitTextarea({
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const raw = e.target.value;
-    let next = raw;
-
-    if (raw.length > limit) {
-      const caret = e.target.selectionStart ?? limit;
-      next = raw.slice(0, limit);
-      const extra = raw.slice(limit);
-
-      if (taRef.current) {
-        taRef.current.value = next;
-        const pos = Math.min(caret, limit);
-        taRef.current.setSelectionRange(pos, pos);
-      }
-
+  const syncTransition = (next: string, extra: string) => {
+    if (extra) {
       dropExtraChars(next, extra);
     }
 
@@ -308,7 +300,6 @@ export function LetterLimitTextarea({
     }
 
     springsRef.current.F.t = next.length / limit;
-    onChange(next);
   };
 
   const remaining = limit - value.length;
@@ -317,6 +308,68 @@ export function LetterLimitTextarea({
 
   const strokeColor = isFull ? 'var(--magenta)' : isNear ? 'var(--amber)' : 'var(--acid)';
   const countColor = isFull ? 'var(--magenta)' : isNear ? 'var(--amber)' : 'var(--dim-aa)';
+
+  return {
+    wrapRef,
+    mirrorRef,
+    fillRef,
+    meterRef,
+    countRef,
+    pileRef,
+    isNear,
+    isFull,
+    strokeColor,
+    countColor,
+    syncTransition
+  };
+}
+
+export function LetterLimitTextarea({
+  id,
+  value,
+  onChange,
+  limit = 100,
+  nearThreshold = 15,
+  rows = 3,
+  placeholder,
+  required = false,
+  className = ''
+}: LetterLimitTextareaProps) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const {
+    wrapRef,
+    mirrorRef,
+    fillRef,
+    meterRef,
+    countRef,
+    pileRef,
+    isNear,
+    isFull,
+    strokeColor,
+    countColor,
+    syncTransition
+  } = useLetterLimitPhysics(value, limit, nearThreshold, false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const raw = e.target.value;
+    let next = raw;
+    let extra = '';
+
+    if (raw.length > limit) {
+      const caret = e.target.selectionStart ?? limit;
+      next = raw.slice(0, limit);
+      extra = raw.slice(limit);
+
+      if (taRef.current) {
+        taRef.current.value = next;
+        const pos = Math.min(caret, limit);
+        taRef.current.setSelectionRange(pos, pos);
+      }
+    }
+
+    syncTransition(next, extra);
+    onChange(next);
+  };
 
   return (
     <div ref={wrapRef} className="relative">
@@ -384,6 +437,131 @@ export function LetterLimitTextarea({
         >
           {value.length} / {limit}자
         </span>
+      </div>
+
+      {/* Falling overflow letters layer */}
+      <div
+        ref={pileRef}
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none overflow-visible z-30"
+      />
+    </div>
+  );
+}
+
+export function LetterLimitInput({
+  id,
+  type = 'text',
+  value,
+  onChange,
+  limit = 80,
+  nearThreshold = 15,
+  placeholder,
+  required = false,
+  className = ''
+}: LetterLimitInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    wrapRef,
+    mirrorRef,
+    fillRef,
+    meterRef,
+    countRef,
+    pileRef,
+    isNear,
+    isFull,
+    strokeColor,
+    countColor,
+    syncTransition
+  } = useLetterLimitPhysics(value, limit, nearThreshold, true);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    let next = raw;
+    let extra = '';
+
+    if (raw.length > limit) {
+      const caret = e.target.selectionStart ?? limit;
+      next = raw.slice(0, limit);
+      extra = raw.slice(limit);
+
+      if (inputRef.current) {
+        inputRef.current.value = next;
+        const pos = Math.min(caret, limit);
+        inputRef.current.setSelectionRange(pos, pos);
+      }
+    }
+
+    syncTransition(next, extra);
+    onChange(next);
+  };
+
+  return (
+    <div ref={wrapRef} className={`relative ${className}`}>
+      <div className="relative">
+        <input
+          ref={inputRef}
+          id={id}
+          type={type}
+          required={required}
+          value={value}
+          onChange={handleChange}
+          placeholder={placeholder}
+          className={`w-full min-h-[48px] pl-3.5 pr-24 py-2.5 bg-black border rounded-[2px] text-sm text-[#F2F2F2] outline-none transition-colors ${
+            isFull
+              ? 'border-[#E02898]'
+              : isNear
+                ? 'border-[#F5C400]'
+                : 'border-white/[0.18] focus:border-[#C6FF00]'
+          }`}
+        />
+
+        {/* Hidden single-line mirror for exact end-of-text coordinate */}
+        <div
+          ref={mirrorRef}
+          aria-hidden="true"
+          className="absolute inset-0 pl-3.5 pr-24 py-2.5 text-sm whitespace-pre invisible pointer-events-none overflow-hidden flex items-center"
+        />
+
+        {/* Inline Ring Meter + Counter HUD */}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+          <svg
+            ref={meterRef}
+            viewBox="0 0 24 24"
+            className="w-4 h-4 will-change-transform"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="var(--div)"
+              strokeWidth="2.8"
+            />
+            <circle
+              ref={fillRef}
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeDasharray="1 1"
+              pathLength={1}
+              style={{ transition: 'stroke 0.2s' }}
+            />
+          </svg>
+          <span
+            ref={countRef}
+            aria-live="polite"
+            className="text-[11px] font-bold tabular-nums will-change-transform"
+            style={{ color: countColor, transition: 'color 0.2s' }}
+          >
+            {value.length}/{limit}
+          </span>
+        </div>
       </div>
 
       {/* Falling overflow letters layer */}
