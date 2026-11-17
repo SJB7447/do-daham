@@ -81,7 +81,7 @@ const INSTRUCTORS: InstructorProfile[] = [
     activeDays: ['화', '목', '토'],
     scheduleTime: '19:00 – 21:00 · 주말 협의',
     activeClassTitle: 'AI 실무 클래스 1기 (6회)',
-    activeClassStatus: '사전 모집 중 · 6~24명',
+    activeClassStatus: '사전 모집 중 · 1~30명 규모별 개설',
     activeClassTo: '/class',
     showStats: true,
     lectureHours: BASE_LECTURE_HOURS,

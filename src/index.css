@@ -2292,7 +2292,10 @@ html[data-theme="light"] .bg-\[\#11120E\],
 html[data-theme="light"] .bg-\[\#111116\],
 html[data-theme="light"] .bg-\[\#11130C\],
 html[data-theme="light"] .bg-\[\#121215\],
-html[data-theme="light"] .bg-\[\#121215\]\/90,
+html[data-theme="light"] .bg-\[\#121215\]\/90 {
+  background-color: #FFFFFF;
+  box-shadow: 0 8px 24px rgba(20, 22, 18, 0.06);
+}
 html[data-theme="light"] .bg-\[\#141414\],
 html[data-theme="light"] .bg-\[\#141417\],
 html[data-theme="light"] .bg-\[\#141418\],
@@ -2329,7 +2332,7 @@ html[data-theme="light"] .to-black\/20 {
   --tw-gradient-to: rgba(20, 22, 18, 0.05);
 }
 html[data-theme="light"] .from-\[\#121215\] {
-  --tw-gradient-from: rgba(255, 255, 255, 0.85);
+  --tw-gradient-from: transparent;
 }
 html[data-theme="light"] .from-\[\#13130C\],
 html[data-theme="light"] .from-\[\#14180A\],
