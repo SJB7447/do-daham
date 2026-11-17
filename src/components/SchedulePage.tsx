@@ -5,7 +5,12 @@ import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, Ma
 import { db } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
-import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
+import {
+  DEFAULT_SITE_SETTINGS,
+  fetchSiteSettings,
+  isInternalFormUrl,
+  SiteSettings
+} from '../lib/siteSettings';
 
 type ClassStatus = 'confirmed' | 'urgent' | 'pending';
 
@@ -115,7 +120,8 @@ export default function SchedulePage() {
     loadPublishedClasses();
   }, []);
 
-  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
+  const canApply = Boolean(siteSettings.classApplicationOpen);
+  const activeApplyTarget = siteSettings.classApplicationFormUrl || '/apply/class-apply';
 
   const currentYear = monthOffset === 0 ? 2026 : 2027;
   const currentMonthIndex = monthOffset === 0 ? 11 : 0; // 11 = Dec, 0 = Jan
@@ -168,7 +174,7 @@ export default function SchedulePage() {
       <SiteHeader
         badge="CLASS"
         ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
-        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+        ctaHref={canApply ? activeApplyTarget : siteSettings.classInquiryFormUrl}
       />
 
       {/* Page Header */}
@@ -576,14 +582,24 @@ export default function SchedulePage() {
                           </Link>
                         )}
                         {canApply ? (
-                          <a
-                            href={siteSettings.classApplicationFormUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hero-cta"
-                          >
-                            사전 신청하기 <ExternalLink size={14} />
-                          </a>
+                          isInternalFormUrl(activeApplyTarget) ? (
+                            <Link to={activeApplyTarget} className="hero-cta">
+                              사전 신청하기 →
+                            </Link>
+                          ) : (
+                            <a
+                              href={activeApplyTarget}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hero-cta"
+                            >
+                              사전 신청하기 <ExternalLink size={14} />
+                            </a>
+                          )
+                        ) : isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+                          <Link to={siteSettings.classInquiryFormUrl} className="hero-cta">
+                            신청 준비 중 (문의 →)
+                          </Link>
                         ) : (
                           <a
                             href={siteSettings.classInquiryFormUrl}

@@ -4,11 +4,14 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Calendar, CheckCircle2, ExternalLink, Sparkles, UserPlus, X } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { BASE_LECTURE_HOURS, BASE_STUDENTS } from '../lib/classMetrics';
-import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
+import {
+  DEFAULT_SITE_SETTINGS,
+  fetchSiteSettings,
+  isInternalFormUrl,
+  SiteSettings
+} from '../lib/siteSettings';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
-
-const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
 type FieldFilter = 'ALL' | 'AI 영상 · 연출' | '웹 · 서비스' | '업무 자동화';
 type DayKey = 'ALL' | '일' | '월' | '화' | '수' | '목' | '금' | '토';
@@ -88,7 +91,8 @@ export default function InstructorsPage() {
     fetchSiteSettings().then(setSiteSettings);
   }, []);
 
-  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
+  const canApply = Boolean(siteSettings.classApplicationOpen);
+  const activeApplyTarget = siteSettings.classApplicationFormUrl || '/apply/class-apply';
 
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const modalCloseRef = useRef<HTMLButtonElement>(null);
@@ -191,7 +195,7 @@ export default function InstructorsPage() {
       <SiteHeader
         badge="CLASS"
         ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
-        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+        ctaHref={canApply ? activeApplyTarget : siteSettings.classInquiryFormUrl}
       />
 
       {/* Page Hero */}
@@ -480,14 +484,23 @@ export default function InstructorsPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 shrink-0">
               {siteSettings.instructorRecruitOpen && siteSettings.instructorRecruitFormUrl ? (
-                <a
-                  href={siteSettings.instructorRecruitFormUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hero-cta-secondary justify-center"
-                >
-                  강사 합류 문의 → <ExternalLink size={14} />
-                </a>
+                isInternalFormUrl(siteSettings.instructorRecruitFormUrl) ? (
+                  <Link
+                    to={siteSettings.instructorRecruitFormUrl}
+                    className="hero-cta-secondary justify-center"
+                  >
+                    강사 합류 문의 →
+                  </Link>
+                ) : (
+                  <a
+                    href={siteSettings.instructorRecruitFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta-secondary justify-center"
+                  >
+                    강사 합류 문의 → <ExternalLink size={14} />
+                  </a>
+                )
               ) : (
                 <>
                   <span className="inline-flex items-center justify-center min-h-[48px] px-5 border border-white/20 text-[#8C8C8C] text-xs font-extrabold rounded-[2px]">
@@ -612,9 +625,17 @@ export default function InstructorsPage() {
                 >
                   클래스 커리큘럼 · 수강료 보기 →
                 </Link>
+              ) : isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+                <Link
+                  to={siteSettings.classInquiryFormUrl}
+                  onClick={() => setSelectedInstructor(null)}
+                  className="hero-cta flex-1 justify-center"
+                >
+                  개설 알림 · 문의하기 →
+                </Link>
               ) : (
                 <a
-                  href={APPLY_FORM_URL}
+                  href={siteSettings.classInquiryFormUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hero-cta flex-1 justify-center"

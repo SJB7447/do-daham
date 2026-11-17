@@ -154,14 +154,20 @@ export function SiteHeader({
         {/* Right Primary CTA + Mobile Hamburger */}
         <div className="nav-actions-right">
           {ctaHref ? (
-            <a
-              href={ctaHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="nav-watch"
-            >
-              {ctaLabel}
-            </a>
+            ctaHref.startsWith('/') ? (
+              <Link to={ctaHref} className="nav-watch">
+                {ctaLabel}
+              </Link>
+            ) : (
+              <a
+                href={ctaHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nav-watch"
+              >
+                {ctaLabel}
+              </a>
+            )
           ) : (
             <Link to={ctaTo} className="nav-watch">
               {ctaLabel}

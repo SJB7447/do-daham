@@ -7,7 +7,12 @@ import StudentShowcaseSection from './StudentShowcaseSection';
 import { JellySlider } from './JellySlider';
 import { ScrambleNumber } from './ScrambleNumber';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
-import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
+import {
+  DEFAULT_SITE_SETTINGS,
+  fetchSiteSettings,
+  isInternalFormUrl,
+  SiteSettings
+} from '../lib/siteSettings';
 
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 const MIN_TO_OPEN = 1;
@@ -105,7 +110,8 @@ export default function ClassPage() {
     return { perSession, total, smallTotal, saved, hint, activeTierId, tierLabel };
   }, [headcount, sessions]);
 
-  const canApply = siteSettings.classApplicationOpen && Boolean(siteSettings.classApplicationFormUrl);
+  const canApply = Boolean(siteSettings.classApplicationOpen);
+  const activeApplyTarget = siteSettings.classApplicationFormUrl || '/apply/class-apply';
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
@@ -113,7 +119,7 @@ export default function ClassPage() {
       <SiteHeader
         badge="CLASS"
         ctaLabel={canApply ? '1기 사전 신청 →' : '강의 문의 →'}
-        ctaHref={canApply ? siteSettings.classApplicationFormUrl : siteSettings.classInquiryFormUrl}
+        ctaHref={canApply ? activeApplyTarget : siteSettings.classInquiryFormUrl}
       />
 
       {/* Hero */}
@@ -140,14 +146,24 @@ export default function ClassPage() {
 
             <div className="hero-cta-row mb-8">
               {canApply ? (
-                <a
-                  href={siteSettings.classApplicationFormUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hero-cta"
-                >
-                  1기 사전 신청하기 →
-                </a>
+                isInternalFormUrl(activeApplyTarget) ? (
+                  <Link to={activeApplyTarget} className="hero-cta">
+                    1기 사전 신청하기 →
+                  </Link>
+                ) : (
+                  <a
+                    href={activeApplyTarget}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta"
+                  >
+                    1기 사전 신청하기 →
+                  </a>
+                )
+              ) : isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+                <Link to={siteSettings.classInquiryFormUrl} className="hero-cta">
+                  {siteSettings.classApplicationClosedMessage} (문의 →)
+                </Link>
               ) : (
                 <a
                   href={siteSettings.classInquiryFormUrl}
@@ -525,14 +541,24 @@ export default function ClassPage() {
         </p>
         <div className="flex flex-wrap justify-center gap-3 mb-5">
           {canApply ? (
-            <a
-              href={siteSettings.classApplicationFormUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hero-cta"
-            >
-              1기 사전 신청하기 →
-            </a>
+            isInternalFormUrl(activeApplyTarget) ? (
+              <Link to={activeApplyTarget} className="hero-cta">
+                1기 사전 신청하기 →
+              </Link>
+            ) : (
+              <a
+                href={activeApplyTarget}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-cta"
+              >
+                1기 사전 신청하기 →
+              </a>
+            )
+          ) : isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+            <Link to={siteSettings.classInquiryFormUrl} className="hero-cta">
+              강의 문의 · 오픈 알림 신청 →
+            </Link>
           ) : (
             <a
               href={siteSettings.classInquiryFormUrl}

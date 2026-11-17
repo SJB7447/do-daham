@@ -13,20 +13,32 @@ export interface SiteSettings {
   instructorRecruitFormUrl: string;
 }
 
-const DEFAULT_INQUIRY_FORM_URL =
-  import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
+const LEGACY_PLACEHOLDER_FORM_URL = 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   kakaoHandle: '@AI다함스튜디오',
   kakaoUrl: 'https://open.kakao.com/me/dodaham',
-  projectInquiryFormUrl: DEFAULT_INQUIRY_FORM_URL,
-  classInquiryFormUrl: DEFAULT_INQUIRY_FORM_URL,
+  projectInquiryFormUrl: '/apply/project-inquiry',
+  classInquiryFormUrl: '/apply/class-inquiry',
   classApplicationOpen: false, // 요청에 따라 1기 강의 신청 폼은 우선 닫아둠 (CMS에서 개방 가능)
-  classApplicationFormUrl: '',
+  classApplicationFormUrl: '/apply/class-apply',
   classApplicationClosedMessage: '1기 신청 폼 정비 중 · 곧 오픈됩니다',
   instructorRecruitOpen: false, // 요청에 따라 강사 합류 문의 폼도 우선 닫아둠 (CMS에서 개방 가능)
-  instructorRecruitFormUrl: ''
+  instructorRecruitFormUrl: '/apply/instructor-recruit'
 };
+
+export function isInternalFormUrl(url: string): boolean {
+  return url.trim().startsWith('/');
+}
+
+function resolveFormUrl(rawValue: unknown, fallback: string, treatLegacyAsEmpty = false): string {
+  const trimmed = String(rawValue || '').trim();
+  if (!trimmed) return fallback;
+  if (treatLegacyAsEmpty && trimmed === LEGACY_PLACEHOLDER_FORM_URL) {
+    return fallback;
+  }
+  return trimmed;
+}
 
 export function normalizeSiteSettings(raw: any): SiteSettings {
   if (!raw || typeof raw !== 'object') {
@@ -35,17 +47,24 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
   return {
     kakaoHandle: String(raw.kakaoHandle || DEFAULT_SITE_SETTINGS.kakaoHandle),
     kakaoUrl: String(raw.kakaoUrl || DEFAULT_SITE_SETTINGS.kakaoUrl).trim(),
-    projectInquiryFormUrl: String(
-      raw.projectInquiryFormUrl || DEFAULT_SITE_SETTINGS.projectInquiryFormUrl
-    ).trim(),
-    classInquiryFormUrl: String(
-      raw.classInquiryFormUrl || DEFAULT_SITE_SETTINGS.classInquiryFormUrl
-    ).trim(),
+    projectInquiryFormUrl: resolveFormUrl(
+      raw.projectInquiryFormUrl,
+      DEFAULT_SITE_SETTINGS.projectInquiryFormUrl,
+      true
+    ),
+    classInquiryFormUrl: resolveFormUrl(
+      raw.classInquiryFormUrl,
+      DEFAULT_SITE_SETTINGS.classInquiryFormUrl,
+      true
+    ),
     classApplicationOpen:
       typeof raw.classApplicationOpen === 'boolean'
         ? raw.classApplicationOpen
         : DEFAULT_SITE_SETTINGS.classApplicationOpen,
-    classApplicationFormUrl: String(raw.classApplicationFormUrl || '').trim(),
+    classApplicationFormUrl: resolveFormUrl(
+      raw.classApplicationFormUrl,
+      DEFAULT_SITE_SETTINGS.classApplicationFormUrl
+    ),
     classApplicationClosedMessage: String(
       raw.classApplicationClosedMessage || DEFAULT_SITE_SETTINGS.classApplicationClosedMessage
     ).trim(),
@@ -53,7 +72,10 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
       typeof raw.instructorRecruitOpen === 'boolean'
         ? raw.instructorRecruitOpen
         : DEFAULT_SITE_SETTINGS.instructorRecruitOpen,
-    instructorRecruitFormUrl: String(raw.instructorRecruitFormUrl || '').trim()
+    instructorRecruitFormUrl: resolveFormUrl(
+      raw.instructorRecruitFormUrl,
+      DEFAULT_SITE_SETTINGS.instructorRecruitFormUrl
+    )
   };
 }
 

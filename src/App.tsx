@@ -15,10 +15,16 @@ import InstructorClassCreatePage from './components/InstructorClassCreatePage';
 import InstructorClassesManagePage from './components/InstructorClassesManagePage';
 import InstructorLoginPage from './components/InstructorLoginPage';
 import ProjectPage from './components/ProjectPage';
+import FormApplyPage from './components/FormApplyPage';
 import { CrystalCube } from './components/CrystalCube';
 import { SiteHeader } from './components/SiteHeader';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from './lib/classMetrics';
-import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from './lib/siteSettings';
+import {
+  DEFAULT_SITE_SETTINGS,
+  isInternalFormUrl,
+  normalizeSiteSettings,
+  SiteSettings
+} from './lib/siteSettings';
 import { Settings, Check, Copy } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
 import { isYoutubeUrl, getYoutubeEmbedUrl, getYoutubeWatchUrl, isEmbeddableYoutubeVideo } from './lib/youtube';
@@ -141,7 +147,14 @@ function RouteScrollHandler() {
           url: `https://do-daham.com${pathname}`,
           robots: 'noindex, nofollow'
         }
-      : routeMeta[pathname] || routeMeta['/'];
+      : pathname === '/apply' || pathname.startsWith('/apply/')
+        ? {
+            title: '신청 · 문의 접수 | DO-DAHAM',
+            description: 'AI 영상·홈페이지 제작 의뢰, 기업·기관 출강 문의, AI 클래스 수강 신청 및 강사 합류 접수.',
+            url: `https://do-daham.com${pathname}`,
+            robots: 'index, follow'
+          }
+        : routeMeta[pathname] || routeMeta['/'];
     document.title = current.title;
     upsertMeta('meta[name="description"]', { name: 'description', content: current.description });
     upsertMeta('meta[name="robots"]', { name: 'robots', content: current.robots });
@@ -715,14 +728,23 @@ function PortfolioHome() {
                     </span>
                   </button>
                 )}
-                <a
-                  href={siteSettings.projectInquiryFormUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hero-cta-secondary"
-                >
-                  제작 문의 폼 →
-                </a>
+                {isInternalFormUrl(siteSettings.projectInquiryFormUrl) ? (
+                  <Link
+                    to={siteSettings.projectInquiryFormUrl}
+                    className="hero-cta-secondary"
+                  >
+                    제작 문의 폼 →
+                  </Link>
+                ) : (
+                  <a
+                    href={siteSettings.projectInquiryFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta-secondary"
+                  >
+                    제작 문의 폼 →
+                  </a>
+                )}
               </div>
             </div>
 
@@ -731,14 +753,23 @@ function PortfolioHome() {
               <h3>기관 · 기업 · 소그룹 강의</h3>
               <p>대상과 목적에 맞춰 커리큘럼을 맞춤 구성합니다. 접수 후 카카오톡이나 유선으로 일정과 인원을 협의합니다.</p>
               <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={siteSettings.classInquiryFormUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hero-cta-secondary"
-                >
-                  강의 문의 폼 작성 →
-                </a>
+                {isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+                  <Link
+                    to={siteSettings.classInquiryFormUrl}
+                    className="hero-cta-secondary"
+                  >
+                    강의 문의 폼 작성 →
+                  </Link>
+                ) : (
+                  <a
+                    href={siteSettings.classInquiryFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta-secondary"
+                  >
+                    강의 문의 폼 작성 →
+                  </a>
+                )}
                 <Link
                   to="/class/instructors"
                   className="inline-flex items-center min-h-[44px] px-2 text-xs font-bold text-[#8C8C8C] hover:text-[#C6FF00] underline underline-offset-4"
@@ -789,6 +820,8 @@ export default function App() {
         <Route path="/class" element={<ClassPage />} />
         <Route path="/class/schedule" element={<SchedulePage />} />
         <Route path="/class/instructors" element={<InstructorsPage />} />
+        <Route path="/apply" element={<FormApplyPage />} />
+        <Route path="/apply/:formType" element={<FormApplyPage />} />
         <Route path="/join/:token" element={<JoinInvitePage />} />
         <Route path="/instructor" element={<InstructorLoginPage />} />
         <Route path="/instructor/login" element={<InstructorLoginPage />} />

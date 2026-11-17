@@ -15,10 +15,12 @@ import { auth, db, storage } from '../lib/firebase';
 import { 
   ArrowLeft, LogOut, Save, Plus, Trash2, ArrowUp, ArrowDown, 
   Image as ImageIcon, Youtube, Link as LinkIcon, Cpu, Loader, AlertTriangle,
-  UserPlus, UserCheck, Copy, Check, XCircle, ShieldCheck, PlayCircle
+  UserPlus, UserCheck, Copy, Check, XCircle, ShieldCheck, PlayCircle, Inbox, ExternalLink
 } from 'lucide-react';
 import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
 import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
+import { fetchFormSubmissions } from '../lib/formSubmissions';
+import AdminSubmissionsPanel from './AdminSubmissionsPanel';
 import mCubeLogo from '../assets/m_cube_logo.png';
 
 const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
@@ -95,7 +97,7 @@ interface PortfolioData {
   siteSettings?: SiteSettings;
 }
 
-type CmsTab = 'content' | 'invites' | 'approvals' | 'classes';
+type CmsTab = 'content' | 'submissions' | 'invites' | 'approvals' | 'classes';
 
 interface ClassOperationItem {
   id: string;
@@ -208,6 +210,7 @@ export default function AdminDashboard() {
   const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'pending' | 'approved' | 'rejected'>('ALL');
   const [classOps, setClassOps] = useState<ClassOperationItem[]>(SAMPLE_CLASS_OPS);
   const [classNotice, setClassNotice] = useState('');
+  const [newSubmissionCount, setNewSubmissionCount] = useState(0);
 
   // 1. Auth Listener
   useEffect(() => {
@@ -224,6 +227,9 @@ export default function AdminDashboard() {
         fetchInvites();
         fetchInstructorApprovals();
         fetchClassOps();
+        fetchFormSubmissions()
+          .then((rows) => setNewSubmissionCount(rows.filter((r) => r.status === 'new').length))
+          .catch(() => {});
       }
     });
     return () => unsubscribe();
@@ -961,6 +967,22 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('submissions')}
+            className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
+              activeTab === 'submissions'
+                ? 'bg-[#ccff00] text-black border-[#ccff00]'
+                : 'bg-black text-[#f4f4f0]/70 border-[#f4f4f0]/20 hover:border-[#ccff00]'
+            }`}
+          >
+            <Inbox size={14} /> 신청 · 문의 관리
+            {newSubmissionCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-[#E02898] text-white font-black rounded-sm">
+                {newSubmissionCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('invites')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === 'invites'
@@ -997,7 +1019,16 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {activeTab === 'classes' ? (
+        {activeTab === 'submissions' ? (
+          <AdminSubmissionsPanel
+            onQuickInviteEmail={(email, memo) => {
+              setInviteEmail(email);
+              setInviteMemo(memo);
+              setActiveTab('invites');
+            }}
+            onCountUpdate={(newCount) => setNewSubmissionCount(newCount)}
+          />
+        ) : activeTab === 'classes' ? (
           <div className="space-y-6">
             <div className="border-[3px] border-[#f4f4f0] bg-[#0d0d0d] p-6 md:p-8">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
@@ -1774,9 +1805,47 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-bold uppercase tracking-widest text-[#ccff00] mb-1 flex items-center gap-3">
                   <span className="text-[#f4f4f0]/20 text-3xl font-black">06</span> 폼 · 카카오톡 &amp; 강의 신청 제어
                 </h2>
-                <p className="text-xs text-neutral-400">
-                  강의 신청 폼 오픈 여부, 강의/제작 문의 폼 URL, 실제 카카오톡 채널/오픈채팅 연결 주소를 여기서 관리합니다. (변경 후 우측 상단/하단 Save 버튼 클릭)
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  기본으로 사이트 자체 내장 폼(<code className="text-[#ccff00]">/apply/...</code>)에 연결되어 <strong className="text-white">신청 · 문의 관리</strong> 탭에 실시간 저장됩니다. 외부 구글폼을 쓰고 싶을 때만 <code className="text-white">https://forms.gle/...</code> 주소를 입력해 덮어쓸 수 있습니다.
                 </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <a
+                    href="/apply/class-apply?preview=1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-white/20 text-[11px] font-bold text-[#ccff00] hover:border-[#ccff00]"
+                  >
+                    <span>수강 신청 폼 미리보기</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href="/apply/class-inquiry"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-white/20 text-[11px] font-bold text-white/80 hover:border-[#ccff00] hover:text-[#ccff00]"
+                  >
+                    <span>강의·출강 문의 폼 미리보기</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href="/apply/project-inquiry"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-white/20 text-[11px] font-bold text-white/80 hover:border-[#ccff00] hover:text-[#ccff00]"
+                  >
+                    <span>제작 의뢰 폼 미리보기</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href="/apply/instructor-recruit?preview=1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-white/20 text-[11px] font-bold text-[#28B8E8] hover:border-[#28B8E8]"
+                  >
+                    <span>강사 합류 폼 미리보기</span>
+                    <ExternalLink size={11} />
+                  </a>
+                </div>
               </div>
 
               {/* Class Application Open/Close Toggle */}
@@ -1846,10 +1915,10 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
-                    강의 신청 폼 URL (오픈 시 연결)
+                    강의 신청 폼 경로/URL (기본: /apply/class-apply)
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={portfolioData.siteSettings?.classApplicationFormUrl || ''}
                     onChange={(e) =>
                       setPortfolioData((prev) => ({
@@ -1860,7 +1929,7 @@ export default function AdminDashboard() {
                         }
                       }))
                     }
-                    placeholder="https://forms.gle/... (새로 제작한 강의 신청 폼)"
+                    placeholder="/apply/class-apply 또는 외부 https://forms.gle/..."
                     className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
                   />
                 </div>
@@ -1888,10 +1957,10 @@ export default function AdminDashboard() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
-                    강의 · 출강 문의 폼 URL (신청 폼과 별도)
+                    강의 · 출강 문의 폼 경로/URL (기본: /apply/class-inquiry)
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={portfolioData.siteSettings?.classInquiryFormUrl || ''}
                     onChange={(e) =>
                       setPortfolioData((prev) => ({
@@ -1902,17 +1971,17 @@ export default function AdminDashboard() {
                         }
                       }))
                     }
-                    placeholder="https://forms.gle/..."
+                    placeholder="/apply/class-inquiry 또는 외부 https://forms.gle/..."
                     className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
-                    제작 의뢰 문의 폼 URL
+                    제작 의뢰 문의 폼 경로/URL (기본: /apply/project-inquiry)
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={portfolioData.siteSettings?.projectInquiryFormUrl || ''}
                     onChange={(e) =>
                       setPortfolioData((prev) => ({
@@ -1923,7 +1992,7 @@ export default function AdminDashboard() {
                         }
                       }))
                     }
-                    placeholder="https://forms.gle/..."
+                    placeholder="/apply/project-inquiry 또는 외부 https://forms.gle/..."
                     className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
                   />
                 </div>
@@ -1972,10 +2041,10 @@ export default function AdminDashboard() {
 
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
-                    강사 합류 문의 폼 URL (오픈 시 연결)
+                    강사 합류 문의 폼 경로/URL (기본: /apply/instructor-recruit)
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={portfolioData.siteSettings?.instructorRecruitFormUrl || ''}
                     onChange={(e) =>
                       setPortfolioData((prev) => ({
@@ -1986,7 +2055,7 @@ export default function AdminDashboard() {
                         }
                       }))
                     }
-                    placeholder="https://forms.gle/... (강사 합류 설문 폼 제작 후 입력)"
+                    placeholder="/apply/instructor-recruit 또는 외부 https://forms.gle/..."
                     className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
                   />
                 </div>

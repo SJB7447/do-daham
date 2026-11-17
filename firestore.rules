@@ -91,6 +91,27 @@ service cloud.firestore {
     //   - linkUrl: string (optional, empty or http(s) URL <= 2048 chars)
     //   - createdAt: timestamp (optional, immutable)
     //
+    // Collection: form_submissions
+    // Document ID: submissionId (auto-generated)
+    // Fields:
+    //   - formType: string (required, 'class_apply' | 'instructor_recruit' | 'class_inquiry' | 'project_inquiry')
+    //   - name: string (required, 1..80 chars)
+    //   - contact: string (required, 1..120 chars)
+    //   - email: string (optional, 0..150 chars)
+    //   - organization: string (optional, 0..120 chars)
+    //   - tier: string (optional, 0..120 chars)
+    //   - sessions: string (optional, 0..80 chars)
+    //   - categories: list (optional, <= 20 items)
+    //   - budget: string (optional, 0..80 chars)
+    //   - schedulePref: string (optional, 0..200 chars)
+    //   - portfolioUrl: string (optional, 0..500 chars)
+    //   - message: string (optional, 0..2000 chars)
+    //   - consent: bool (required, must be true on create)
+    //   - status: string (required, 'new' on create)
+    //   - adminMemo: string (optional, 0..1000 chars)
+    //   - createdAt: timestamp (required on create)
+    //   - updatedAt: timestamp (optional)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -296,6 +317,32 @@ service cloud.firestore {
         (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
+    function isValidFormSubmissionCreate(data) {
+      return hasOnlyAllowedFields([
+          'formType', 'name', 'contact', 'email', 'organization', 'tier',
+          'sessions', 'categories', 'budget', 'schedulePref', 'portfolioUrl',
+          'message', 'consent', 'status', 'adminMemo', 'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['formType', 'name', 'contact', 'consent', 'status', 'createdAt']) &&
+        data.formType in ['class_apply', 'instructor_recruit', 'class_inquiry', 'project_inquiry'] &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.contact is string && data.contact.size() >= 1 && data.contact.size() <= 120 &&
+        isValidOptionalString('email', 0, 150) &&
+        isValidOptionalString('organization', 0, 120) &&
+        isValidOptionalString('tier', 0, 120) &&
+        isValidOptionalString('sessions', 0, 80) &&
+        isValidOptionalList('categories', 20) &&
+        isValidOptionalString('budget', 0, 80) &&
+        isValidOptionalString('schedulePref', 0, 200) &&
+        isValidOptionalString('portfolioUrl', 0, 500) &&
+        isValidOptionalString('message', 0, 2000) &&
+        data.consent == true &&
+        data.status == 'new' &&
+        isValidOptionalString('adminMemo', 0, 1000) &&
+        data.createdAt is timestamp &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -379,6 +426,13 @@ service cloud.firestore {
          areImmutableFieldsUnchanged(['authorUid', 'createdAt']));
       allow delete: if isAdmin() ||
         (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+    }
+
+    // 7. Form Submissions: public create with strict validation;
+    //    admin-only read, update, and delete (contains PII)
+    match /form_submissions/{submissionId} {
+      allow create: if isValidFormSubmissionCreate(request.resource.data);
+      allow read, update, delete: if isAdmin();
     }
 
     // ===============================================================

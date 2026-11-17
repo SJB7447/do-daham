@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, Copy } from 'lucide-react';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
-import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
+import {
+  DEFAULT_SITE_SETTINGS,
+  fetchSiteSettings,
+  isInternalFormUrl,
+  SiteSettings
+} from '../lib/siteSettings';
 
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
@@ -225,14 +230,20 @@ export default function ProjectPage() {
               <h3>의뢰 내용 남기기</h3>
               <p>제작 분야, 희망 납기, 참고 링크를 폼으로 남겨주시면 확인 후 연락드립니다.</p>
               <div className="flex flex-wrap gap-3">
-                <a
-                  href={siteSettings.projectInquiryFormUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hero-cta-secondary"
-                >
-                  제작 문의 폼 작성 →
-                </a>
+                {isInternalFormUrl(siteSettings.projectInquiryFormUrl) ? (
+                  <Link to={siteSettings.projectInquiryFormUrl} className="hero-cta-secondary">
+                    제작 문의 폼 작성 →
+                  </Link>
+                ) : (
+                  <a
+                    href={siteSettings.projectInquiryFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-cta-secondary"
+                  >
+                    제작 문의 폼 작성 →
+                  </a>
+                )}
                 <Link to="/" className="hero-cta-text">
                   <ArrowLeft size={14} />
                   <span>홈으로 돌아가기</span>
