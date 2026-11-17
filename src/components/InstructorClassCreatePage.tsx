@@ -7,6 +7,7 @@ import { auth, db } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
+import { LetterLimitTextarea } from './LetterLimitTextarea';
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -310,13 +311,17 @@ export default function InstructorClassCreatePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#8C8C8C] mb-1.5">한 줄 소개 *</label>
-                      <textarea
+                      <label htmlFor="class-summary-input" className="block text-xs font-bold text-[#8C8C8C] mb-1.5">
+                        한 줄 소개 * (120자 이내)
+                      </label>
+                      <LetterLimitTextarea
+                        id="class-summary-input"
                         rows={3}
+                        limit={120}
+                        nearThreshold={20}
                         value={summary}
-                        onChange={(e) => setSummary(e.target.value)}
+                        onChange={setSummary}
                         placeholder="수강생이 완성하게 될 핵심 결과물을 간단히 적어주세요."
-                        className="w-full p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

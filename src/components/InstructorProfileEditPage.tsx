@@ -8,6 +8,7 @@ import { auth, db, storage } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
+import { LetterLimitTextarea } from './LetterLimitTextarea';
 
 type Weekday = '일' | '월' | '화' | '수' | '목' | '금' | '토';
 const WEEK_DAYS: Weekday[] = ['일', '월', '화', '수', '목', '금', '토'];
@@ -433,35 +434,33 @@ export default function InstructorProfileEditPage() {
                   </div>
                 </div>
 
-                {/* Bio (100 char counter) */}
+                {/* Bio (100 char limit with spring physics drop) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-[#8C8C8C]">강사 소개</label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((p) => ({
-                            ...p,
-                            bio: '도구를 외우는 수업이 아니라, 각자의 브랜드와 업무에 바로 쓰는 AI 결과물을 완성하는 실전 강의를 진행합니다.'
-                          }))
-                        }
-                        className="text-[11px] font-bold text-[#C6FF00] hover:underline cursor-pointer"
-                      >
-                        추천 소개 넣기
-                      </button>
-                      <span className="text-xs font-bold text-[#8C8C8C]">
-                        {form.bio.length} / 100자
-                      </span>
-                    </div>
+                    <label htmlFor="inst-bio-input" className="text-xs font-bold text-[#8C8C8C]">
+                      강사 소개 (100자 이내)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          bio: '도구를 외우는 수업이 아니라, 각자의 브랜드와 업무에 바로 쓰는 AI 결과물을 완성하는 실전 강의를 진행합니다.'
+                        }))
+                      }
+                      className="text-[11px] font-bold text-[#C6FF00] hover:underline cursor-pointer"
+                    >
+                      추천 소개 넣기
+                    </button>
                   </div>
-                  <textarea
+                  <LetterLimitTextarea
+                    id="inst-bio-input"
                     rows={3}
-                    maxLength={100}
+                    limit={100}
+                    nearThreshold={15}
                     value={form.bio}
-                    onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
+                    onChange={(next) => setForm((p) => ({ ...p, bio: next }))}
                     placeholder="예: 광고·숏폼·웹서비스를 직접 제작하는 현업 디렉터. 각자의 실제 결과물을 완성하는 실전 강의를 진행합니다."
-                    className="w-full p-3.5 bg-black border border-white/[0.18] rounded-[2px] text-[15px] text-[#F2F2F2] focus:border-[#C6FF00] outline-none"
                   />
                 </div>
 

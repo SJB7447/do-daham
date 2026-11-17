@@ -13,6 +13,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ExternalLink, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
+import { LetterLimitTextarea } from './LetterLimitTextarea';
 
 export interface StudentWorkItem {
   id: string;
@@ -387,14 +388,18 @@ export default function StudentShowcaseSection() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#8C8C8C] mb-1">설명 *</label>
-                <textarea
+                <label htmlFor="showcase-desc-input" className="block text-xs font-bold text-[#8C8C8C] mb-1">
+                  설명 * (200자 이내)
+                </label>
+                <LetterLimitTextarea
+                  id="showcase-desc-input"
                   rows={3}
+                  limit={200}
+                  nearThreshold={25}
                   required
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={setDescription}
                   placeholder="어떤 도구와 과정을 거쳐 완성했는지 간단히 작성해 주세요."
-                  className="w-full p-3 bg-black border border-white/[0.18] rounded-[2px] text-sm text-white focus:border-[#C6FF00] outline-none"
                 />
               </div>
 
