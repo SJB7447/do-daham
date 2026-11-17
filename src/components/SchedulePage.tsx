@@ -581,35 +581,43 @@ export default function SchedulePage() {
                             수강료 계산기 →
                           </Link>
                         )}
-                        {canApply ? (
-                          isInternalFormUrl(activeApplyTarget) ? (
-                            <Link to={activeApplyTarget} className="hero-cta">
-                              사전 신청하기 →
+                        {(() => {
+                          const classQuery = `classId=${encodeURIComponent(cls.id)}&classTitle=${encodeURIComponent(cls.title)}&instructor=${encodeURIComponent(cls.instructorName)}&schedule=${encodeURIComponent(`${cls.weekdayLabel} ${cls.timeLabel}`)}`;
+                          const applyTo = `${activeApplyTarget}${activeApplyTarget.includes('?') ? '&' : '?'}${classQuery}`;
+                          const inquiryTo = `${siteSettings.classInquiryFormUrl}${siteSettings.classInquiryFormUrl.includes('?') ? '&' : '?'}${classQuery}`;
+
+                          if (canApply) {
+                            return isInternalFormUrl(activeApplyTarget) ? (
+                              <Link to={applyTo} className="hero-cta">
+                                사전 신청하기 →
+                              </Link>
+                            ) : (
+                              <a
+                                href={activeApplyTarget}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hero-cta"
+                              >
+                                사전 신청하기 <ExternalLink size={14} />
+                              </a>
+                            );
+                          }
+
+                          return isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
+                            <Link to={inquiryTo} className="hero-cta">
+                              수강 · 개설 문의 →
                             </Link>
                           ) : (
                             <a
-                              href={activeApplyTarget}
+                              href={siteSettings.classInquiryFormUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="hero-cta"
                             >
-                              사전 신청하기 <ExternalLink size={14} />
+                              신청 준비 중 (문의) <ExternalLink size={14} />
                             </a>
-                          )
-                        ) : isInternalFormUrl(siteSettings.classInquiryFormUrl) ? (
-                          <Link to={siteSettings.classInquiryFormUrl} className="hero-cta">
-                            신청 준비 중 (문의 →)
-                          </Link>
-                        ) : (
-                          <a
-                            href={siteSettings.classInquiryFormUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hero-cta"
-                          >
-                            신청 준비 중 (문의) <ExternalLink size={14} />
-                          </a>
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
                   </article>

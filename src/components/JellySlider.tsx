@@ -309,7 +309,7 @@ export function JellySlider({
         {/* Value Drop Label */}
         <div
           ref={dropLabelRef}
-          className="absolute left-0 top-0 w-[36px] h-[36px] grid place-items-center text-xs font-black tabular-nums text-[#0A0A0A] pointer-events-none will-change-transform"
+          className="jelly-drop-label absolute left-0 top-0 w-[36px] h-[36px] grid place-items-center text-xs font-black tabular-nums text-[#0A0A0A] pointer-events-none will-change-transform"
         >
           {value}
         </div>

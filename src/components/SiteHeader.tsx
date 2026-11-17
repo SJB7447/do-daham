@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, Menu } from 'lucide-react';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
+import { ThemePullCord } from './ThemePullCord';
 
 interface SiteHeaderProps {
   brandName?: string;
@@ -193,6 +194,7 @@ export function SiteHeader({
         triggerRef={menuBtnRef}
         watchHref={watchHref}
       />
+      <ThemePullCord />
     </>
   );
 }

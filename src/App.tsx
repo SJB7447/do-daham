@@ -165,6 +165,22 @@ function RouteScrollHandler() {
     upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: current.description });
     upsertCanonical(current.url);
 
+    // Keep Admin CMS and Instructor portals in dark theme; restore session choice on public routes
+    const isDarkOnlyRoute =
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/instructor') ||
+      pathname.startsWith('/join/');
+    if (isDarkOnlyRoute) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      try {
+        const saved = sessionStorage.getItem('dodaham-theme') === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+      } catch {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    }
+
     if (!hash) {
       window.scrollTo({ top: 0, behavior: 'auto' });
       return;

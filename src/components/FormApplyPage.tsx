@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
   AlertTriangle,
   ArrowLeft,
+  Calendar,
   Check,
   CheckCircle2,
   Clock,
@@ -13,6 +15,7 @@ import {
   ShieldCheck,
   Sparkles
 } from 'lucide-react';
+import { db } from '../lib/firebase';
 import { SiteHeader } from './SiteHeader';
 import { CrystalCube } from './CrystalCube';
 import { LetterLimitTextarea } from './LetterLimitTextarea';
@@ -143,12 +146,29 @@ const PROJECT_BUDGETS = [
   '상담 후 결정'
 ];
 
+interface PublishedClassOption {
+  id: string;
+  title: string;
+  instructorName: string;
+  scheduleLabel: string;
+  status: string;
+}
+
+function formatClassOptionLabel(title: string, instructor?: string, schedule?: string): string {
+  const details = [instructor ? `${instructor} 강사` : '', schedule || ''].filter(Boolean).join(' · ');
+  return details ? `${title} (${details})` : title;
+}
+
 export default function FormApplyPage() {
   const { formType } = useParams<{ formType?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const isPreview = searchParams.get('preview') === '1';
+  const queryClassId = searchParams.get('classId') || '';
+  const queryClassTitle = searchParams.get('classTitle') || '';
+  const queryInstructor = searchParams.get('instructor') || '';
+  const querySchedule = searchParams.get('schedule') || '';
 
   const activeSlug: FormSlug = useMemo(() => {
     if (formType && formType in SLUG_TO_META) {
@@ -161,6 +181,11 @@ export default function FormApplyPage() {
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [publishedClasses, setPublishedClasses] = useState<PublishedClassOption[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState(queryClassId);
+  const [selectedClassLabel, setSelectedClassLabel] = useState(() =>
+    queryClassTitle ? formatClassOptionLabel(queryClassTitle, queryInstructor, querySchedule) : ''
+  );
 
   // Common form state
   const [name, setName] = useState('');
@@ -190,12 +215,71 @@ export default function FormApplyPage() {
       .finally(() => setSettingsLoading(false));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPublishedClasses() {
+      try {
+        const q = query(
+          collection(db, 'classes'),
+          where('status', 'in', ['published', 'confirmed', 'started'])
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+
+        const list: PublishedClassOption[] = snap.docs.map((d) => {
+          const data = d.data();
+          const startDate = String(data.startDate || '일정 협의');
+          const timeStr = `${data.startTime || '19:30'}–${data.endTime || '21:30'}`;
+          return {
+            id: d.id,
+            title: String(data.title || 'AI 실무 클래스'),
+            instructorName: String(data.instructorName || 'DO-DAHAM 강사'),
+            scheduleLabel: `${startDate} ${timeStr}`,
+            status: String(data.status || 'published')
+          };
+        });
+
+        if (queryClassTitle && !list.some((item) => item.id === queryClassId || item.title === queryClassTitle)) {
+          list.unshift({
+            id: queryClassId || 'url-selected',
+            title: queryClassTitle,
+            instructorName: queryInstructor || 'DO-DAHAM 강사',
+            scheduleLabel: querySchedule || '일정 협의',
+            status: 'published'
+          });
+        }
+
+        setPublishedClasses(list);
+        if (queryClassId || queryClassTitle) {
+          const matched = list.find((c) => c.id === queryClassId || c.title === queryClassTitle);
+          if (matched) {
+            setSelectedClassId(matched.id);
+            setSelectedClassLabel(
+              formatClassOptionLabel(matched.title, matched.instructorName, matched.scheduleLabel)
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Published classes fetch skipped:', err);
+      }
+    }
+
+    loadPublishedClasses();
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClassId, queryClassTitle, queryInstructor, querySchedule]);
+
   // Reset form defaults cleanly when switching form type
   useEffect(() => {
     setSubmitError('');
     setSubmittedInfo(null);
     setCategories([]);
-    setSchedulePref('');
+    setSchedulePref(
+      (activeSlug === 'class-apply' || activeSlug === 'class-inquiry') && querySchedule
+        ? querySchedule
+        : ''
+    );
     setPortfolioUrl('');
     setMessage('');
     setConsent(false);
@@ -213,14 +297,23 @@ export default function FormApplyPage() {
       setTier('');
       setSessions('');
     }
-  }, [activeSlug]);
+  }, [activeSlug, querySchedule]);
 
+  const hasSpecificPublishedClass = Boolean(queryClassId || queryClassTitle);
   const isFormOpen = useMemo(() => {
     if (isPreview) return true;
-    if (activeSlug === 'class-apply') return siteSettings.classApplicationOpen;
+    if (activeSlug === 'class-apply') {
+      return siteSettings.classApplicationOpen || hasSpecificPublishedClass;
+    }
     if (activeSlug === 'instructor-recruit') return siteSettings.instructorRecruitOpen;
     return true;
-  }, [activeSlug, isPreview, siteSettings.classApplicationOpen, siteSettings.instructorRecruitOpen]);
+  }, [
+    activeSlug,
+    isPreview,
+    siteSettings.classApplicationOpen,
+    siteSettings.instructorRecruitOpen,
+    hasSpecificPublishedClass
+  ]);
 
   const isExternalRedirectConfigured = useMemo(() => {
     if (activeSlug === 'class-apply') {
@@ -303,19 +396,25 @@ export default function FormApplyPage() {
 
     setSubmitting(true);
     try {
+      const classPrefix =
+        (activeSlug === 'class-apply' || activeSlug === 'class-inquiry') && selectedClassLabel
+          ? `[신청 대상 수업: ${selectedClassLabel}]\n`
+          : '';
+      const combinedMessage = `${classPrefix}${message.trim()}`.slice(0, 2000);
+
       await createFormSubmission({
         formType: activeMeta.type,
         name: name.trim(),
         contact: contact.trim(),
         email: email.trim(),
         organization: organization.trim(),
-        tier: tier.trim(),
-        sessions: sessions.trim(),
+        tier: tier.trim().slice(0, 120),
+        sessions: sessions.trim().slice(0, 80),
         categories,
         budget: activeSlug === 'project-inquiry' ? budget.trim() : '',
-        schedulePref: schedulePref.trim(),
+        schedulePref: schedulePref.trim().slice(0, 200),
         portfolioUrl: portfolioUrl.trim(),
-        message: message.trim()
+        message: combinedMessage
       });
 
       setSubmittedInfo({
@@ -623,6 +722,71 @@ export default function FormApplyPage() {
               <div className="text-xs font-extrabold tracking-[0.14em] text-[#C6FF00] uppercase">
                 02 · {activeMeta.shortLabel} 세부 항목
               </div>
+
+              {/* Dynamic Published Class Selector (Auto-linked from /class/schedule) */}
+              {(activeSlug === 'class-apply' || activeSlug === 'class-inquiry') &&
+                (publishedClasses.length > 0 || Boolean(selectedClassLabel)) && (
+                  <div className="space-y-2.5 p-4 bg-black/70 border border-[#C6FF00]/30 rounded-[2px]">
+                    <label className="flex items-center gap-1.5 text-xs font-extrabold text-[#C6FF00]">
+                      <Calendar size={13} />
+                      <span>신청 · 문의 대상 수업 선택 (등록된 수업 자동 연동)</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {publishedClasses.map((cls) => {
+                        const isSelected = selectedClassId === cls.id;
+                        const label = formatClassOptionLabel(
+                          cls.title,
+                          cls.instructorName,
+                          cls.scheduleLabel
+                        );
+                        return (
+                          <button
+                            key={cls.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClassId(cls.id);
+                              setSelectedClassLabel(label);
+                              if (!schedulePref.trim()) {
+                                setSchedulePref(cls.scheduleLabel);
+                              }
+                            }}
+                            className={`p-3 text-left rounded-[2px] border transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'border-[#C6FF00] bg-[#141A08]'
+                                : 'border-white/[0.15] bg-black hover:border-white/35'
+                            }`}
+                          >
+                            <div className="text-xs font-extrabold text-[#F2F2F2] line-clamp-1">
+                              {cls.title}
+                            </div>
+                            <div className="text-[11px] text-[#8C8C8C] mt-0.5 line-clamp-1">
+                              {cls.instructorName} · {cls.scheduleLabel}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedClassId('');
+                          setSelectedClassLabel('');
+                        }}
+                        className={`p-3 text-left rounded-[2px] border transition-colors cursor-pointer ${
+                          !selectedClassId && !selectedClassLabel
+                            ? 'border-[#C6FF00] bg-[#141A08]'
+                            : 'border-white/[0.15] bg-black hover:border-white/35'
+                        }`}
+                      >
+                        <div className="text-xs font-extrabold text-[#F2F2F2]">
+                          기본 · 상담 후 수업 결정
+                        </div>
+                        <div className="text-[11px] text-[#8C8C8C] mt-0.5">
+                          희망 조건에 맞는 수업을 추천받습니다
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
               {/* A. Class Application Specific */}
               {activeSlug === 'class-apply' && (
