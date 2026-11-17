@@ -9,6 +9,8 @@ export interface SiteSettings {
   classApplicationOpen: boolean;
   classApplicationFormUrl: string;
   classApplicationClosedMessage: string;
+  instructorRecruitOpen: boolean;
+  instructorRecruitFormUrl: string;
 }
 
 const DEFAULT_INQUIRY_FORM_URL =
@@ -21,7 +23,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   classInquiryFormUrl: DEFAULT_INQUIRY_FORM_URL,
   classApplicationOpen: false, // 요청에 따라 1기 강의 신청 폼은 우선 닫아둠 (CMS에서 개방 가능)
   classApplicationFormUrl: '',
-  classApplicationClosedMessage: '1기 신청 폼 정비 중 · 곧 오픈됩니다'
+  classApplicationClosedMessage: '1기 신청 폼 정비 중 · 곧 오픈됩니다',
+  instructorRecruitOpen: false, // 요청에 따라 강사 합류 문의 폼도 우선 닫아둠 (CMS에서 개방 가능)
+  instructorRecruitFormUrl: ''
 };
 
 export function normalizeSiteSettings(raw: any): SiteSettings {
@@ -44,7 +48,12 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
     classApplicationFormUrl: String(raw.classApplicationFormUrl || '').trim(),
     classApplicationClosedMessage: String(
       raw.classApplicationClosedMessage || DEFAULT_SITE_SETTINGS.classApplicationClosedMessage
-    ).trim()
+    ).trim(),
+    instructorRecruitOpen:
+      typeof raw.instructorRecruitOpen === 'boolean'
+        ? raw.instructorRecruitOpen
+        : DEFAULT_SITE_SETTINGS.instructorRecruitOpen,
+    instructorRecruitFormUrl: String(raw.instructorRecruitFormUrl || '').trim()
   };
 }
 

@@ -1811,6 +1811,38 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
+              {/* Instructor Recruit Open/Close Toggle */}
+              <div className="p-4 bg-black border border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-extrabold text-white">
+                    강사 합류 문의 폼 상태:{' '}
+                    <span className={portfolioData.siteSettings?.instructorRecruitOpen ? 'text-[#ccff00]' : 'text-[#F5C400]'}>
+                      {portfolioData.siteSettings?.instructorRecruitOpen ? '열림 (합류 문의 가능)' : '닫힘 (설문 폼 준비 중)'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-neutral-400 mt-0.5">
+                    닫힘 상태에서는 /class/instructors 하단의 합류 문의 버튼이 준비 중으로 표시됩니다.
+                  </div>
+                </div>
+                <label className="inline-flex items-center gap-2.5 cursor-pointer shrink-0 px-4 py-2.5 border border-white/20 bg-[#141414]">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(portfolioData.siteSettings?.instructorRecruitOpen)}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          instructorRecruitOpen: e.target.checked
+                        }
+                      }))
+                    }
+                    className="w-4 h-4 accent-[#ccff00]"
+                  />
+                  <span className="text-xs font-extrabold text-[#ccff00]">합류 문의 폼 열기</span>
+                </label>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
@@ -1934,6 +1966,27 @@ export default function AdminDashboard() {
                       }))
                     }
                     placeholder="@AI다함스튜디오"
+                    className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                    강사 합류 문의 폼 URL (오픈 시 연결)
+                  </label>
+                  <input
+                    type="url"
+                    value={portfolioData.siteSettings?.instructorRecruitFormUrl || ''}
+                    onChange={(e) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        siteSettings: {
+                          ...normalizeSiteSettings(prev.siteSettings),
+                          instructorRecruitFormUrl: e.target.value
+                        }
+                      }))
+                    }
+                    placeholder="https://forms.gle/... (강사 합류 설문 폼 제작 후 입력)"
                     className="bg-black border border-[#f4f4f0]/20 p-3.5 text-sm text-white outline-none focus:border-[#ccff00]"
                   />
                 </div>
