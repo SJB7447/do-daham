@@ -1,21 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './lib/firebase';
-import AdminDashboard from './components/AdminDashboard';
-import WorkshopPage from './components/WorkshopPage';
-import ActivityPage from './components/ActivityPage';
 import ActivityHighlightSection from './components/ActivityHighlightSection';
-import ClassPage from './components/ClassPage';
-import InstructorsPage from './components/InstructorsPage';
-import SchedulePage from './components/SchedulePage';
-import JoinInvitePage from './components/JoinInvitePage';
-import InstructorProfileEditPage from './components/InstructorProfileEditPage';
-import InstructorClassCreatePage from './components/InstructorClassCreatePage';
-import InstructorClassesManagePage from './components/InstructorClassesManagePage';
-import InstructorLoginPage from './components/InstructorLoginPage';
-import ProjectPage from './components/ProjectPage';
-import FormApplyPage from './components/FormApplyPage';
 import { CrystalCube } from './components/CrystalCube';
 import { SiteHeader } from './components/SiteHeader';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from './lib/classMetrics';
@@ -28,6 +15,55 @@ import {
 import { Settings, Check, Copy } from 'lucide-react';
 import mCubeLogo from './assets/m_cube_logo.png';
 import { isYoutubeUrl, getYoutubeEmbedUrl, getYoutubeWatchUrl, isEmbeddableYoutubeVideo } from './lib/youtube';
+
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const WorkshopPage = lazy(() => import('./components/WorkshopPage'));
+const ActivityPage = lazy(() => import('./components/ActivityPage'));
+const ClassPage = lazy(() => import('./components/ClassPage'));
+const InstructorsPage = lazy(() => import('./components/InstructorsPage'));
+const SchedulePage = lazy(() => import('./components/SchedulePage'));
+const JoinInvitePage = lazy(() => import('./components/JoinInvitePage'));
+const InstructorProfileEditPage = lazy(() => import('./components/InstructorProfileEditPage'));
+const InstructorClassCreatePage = lazy(() => import('./components/InstructorClassCreatePage'));
+const InstructorClassesManagePage = lazy(() => import('./components/InstructorClassesManagePage'));
+const InstructorLoginPage = lazy(() => import('./components/InstructorLoginPage'));
+const ProjectPage = lazy(() => import('./components/ProjectPage'));
+const FormApplyPage = lazy(() => import('./components/FormApplyPage'));
+
+const PORTFOLIO_CACHE_KEY = 'dodaham-portfolio-cache-v1';
+
+const DEFAULT_PORTFOLIO_DATA = {
+  userName: "DO-DAHAM",
+  userRole: "CREATIVE REBELS",
+  manifesto: {
+    lines: ["눈치 보지 마.", "허락 구하지 마.", "그냥 해."],
+    highlight: "하고싶은거 다해."
+  },
+  masterpiece: {
+    title: "REPRESENTATIVE\nWORK",
+    descriptionTitle: "경기관광공사 영상 공모전 입상작",
+    descriptionSub: '"Code:M Studio"가 제작한 경기도의 새로운 매력.',
+    embedSrc: "https://www.youtube.com/embed/P-b7WV-obKs"
+  },
+  actions: [
+    { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: mCubeLogo, external: true },
+    { id: 2, title: "Mood Brew", href: "https://cafe.do-daham.com/mood/", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
+    { id: 3, title: "MechFlow", href: "https://machine.do-daham.com", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
+    { id: 4, title: "Coming Soon...", href: "", img: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false }
+  ]
+};
+
+function loadCachedPortfolio(): { data: typeof DEFAULT_PORTFOLIO_DATA; siteSettings?: SiteSettings } | null {
+  try {
+    const raw = sessionStorage.getItem(PORTFOLIO_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.data) return parsed;
+  } catch {
+    // Ignore storage access/parse errors
+  }
+  return null;
+}
 
 const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
 const APPLY_FORM_URL = import.meta.env.VITE_APPLY_FORM_URL || 'https://forms.gle/w1cTzZYUCGkqdDTT6';
@@ -217,32 +253,14 @@ function RouteScrollHandler() {
 
 // ═══ PUBLIC PORTFOLIO COMPONENT ═══
 function PortfolioHome() {
-  const [data, setData] = useState({
-    userName: "DO-DAHAM",
-    userRole: "CREATIVE REBELS",
-    manifesto: {
-      lines: ["눈치 보지 마.", "허락 구하지 마.", "그냥 해."],
-      highlight: "하고싶은거 다해."
-    },
-    masterpiece: {
-      title: "REPRESENTATIVE\nWORK",
-      descriptionTitle: "경기관광공사 영상 공모전 입상작",
-      descriptionSub: '"Code:M Studio"가 제작한 경기도의 새로운 매력.',
-      embedSrc: "https://www.youtube.com/embed/P-b7WV-obKs"
-    },
-    actions: [
-      { id: 1, title: "CodeM Studio", href: "https://www.youtube.com/@CodeM_Studio_AI11", img: mCubeLogo, external: true },
-      { id: 2, title: "Mood Brew", href: "https://cafe.do-daham.com/mood/", img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
-      { id: 3, title: "MechFlow", href: "https://machine.do-daham.com", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false },
-      { id: 4, title: "Coming Soon...", href: "", img: "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", external: false }
-    ]
-  });
+  const [data, setData] = useState(() => loadCachedPortfolio()?.data ?? DEFAULT_PORTFOLIO_DATA);
 
-  const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [kakaoCopied, setKakaoCopied] = useState(false);
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(
+    () => loadCachedPortfolio()?.siteSettings ?? DEFAULT_SITE_SETTINGS
+  );
 
   const handleCopyKakao = async () => {
     try {
@@ -304,7 +322,7 @@ function PortfolioHome() {
             };
           });
 
-          setData({
+          const nextData = {
             userName: parsed.userName || "DO-DAHAM",
             userRole: parsed.userRole || "CREATIVE REBELS",
             manifesto: {
@@ -318,15 +336,27 @@ function PortfolioHome() {
               embedSrc: parsed.masterpiece?.embedSrc || ""
             },
             actions: normalizedActions
-          });
-          if (parsed.siteSettings) {
-            setSiteSettings(normalizeSiteSettings(parsed.siteSettings));
+          };
+          setData(nextData);
+
+          const nextSiteSettings = parsed.siteSettings
+            ? normalizeSiteSettings(parsed.siteSettings)
+            : undefined;
+          if (nextSiteSettings) {
+            setSiteSettings(nextSiteSettings);
+          }
+
+          try {
+            sessionStorage.setItem(
+              PORTFOLIO_CACHE_KEY,
+              JSON.stringify({ data: nextData, siteSettings: nextSiteSettings })
+            );
+          } catch {
+            // Ignore sessionStorage quota errors
           }
         }
       } catch (err) {
         console.error("Firestore read error, using local defaults:", err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -346,17 +376,6 @@ function PortfolioHome() {
   const watchHref = youtubeAction
     ? getYoutubeWatchUrl(normalizeYoutubeHref(youtubeAction.href || youtubeAction.videoSrc))
     : DEFAULT_YOUTUBE_CHANNEL_URL;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] flex items-center justify-center font-sans">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C6FF00]"></div>
-          <span className="font-mono text-xs tracking-widest uppercase opacity-65">Unpacking site...</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
@@ -830,27 +849,29 @@ export default function App() {
   return (
     <Router>
       <RouteScrollHandler />
-      <Routes>
-        <Route path="/" element={<PortfolioHome />} />
-        <Route path="/project" element={<ProjectPage />} />
-        <Route path="/class" element={<ClassPage />} />
-        <Route path="/class/schedule" element={<SchedulePage />} />
-        <Route path="/class/instructors" element={<InstructorsPage />} />
-        <Route path="/apply" element={<FormApplyPage />} />
-        <Route path="/apply/:formType" element={<FormApplyPage />} />
-        <Route path="/join/:token" element={<JoinInvitePage />} />
-        <Route path="/instructor" element={<InstructorLoginPage />} />
-        <Route path="/instructor/login" element={<InstructorLoginPage />} />
-        <Route path="/instructor/profile" element={<InstructorProfileEditPage />} />
-        <Route path="/instructor/classes" element={<InstructorClassesManagePage />} />
-        <Route path="/instructor/classes/new" element={<InstructorClassCreatePage />} />
-        <Route path="/activity" element={<ActivityPage />} />
-        {/* 워크숍 전면 수정 기간 동안 일반 사용자 접근 차단 (메인으로 리다이렉트) */}
-        <Route path="/workshop" element={<Navigate to="/" replace />} />
-        {/* 수정 및 미리보기용 경로 */}
-        <Route path="/workshop-preview" element={<WorkshopPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
+      <Suspense fallback={<div className="min-h-screen bg-[var(--bg)]" />}>
+        <Routes>
+          <Route path="/" element={<PortfolioHome />} />
+          <Route path="/project" element={<ProjectPage />} />
+          <Route path="/class" element={<ClassPage />} />
+          <Route path="/class/schedule" element={<SchedulePage />} />
+          <Route path="/class/instructors" element={<InstructorsPage />} />
+          <Route path="/apply" element={<FormApplyPage />} />
+          <Route path="/apply/:formType" element={<FormApplyPage />} />
+          <Route path="/join/:token" element={<JoinInvitePage />} />
+          <Route path="/instructor" element={<InstructorLoginPage />} />
+          <Route path="/instructor/login" element={<InstructorLoginPage />} />
+          <Route path="/instructor/profile" element={<InstructorProfileEditPage />} />
+          <Route path="/instructor/classes" element={<InstructorClassesManagePage />} />
+          <Route path="/instructor/classes/new" element={<InstructorClassCreatePage />} />
+          <Route path="/activity" element={<ActivityPage />} />
+          {/* 워크숍 전면 수정 기간 동안 일반 사용자 접근 차단 (메인으로 리다이렉트) */}
+          <Route path="/workshop" element={<Navigate to="/" replace />} />
+          {/* 수정 및 미리보기용 경로 */}
+          <Route path="/workshop-preview" element={<WorkshopPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

@@ -79,18 +79,72 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
   };
 }
 
-export async function fetchSiteSettings(): Promise<SiteSettings> {
+const CACHE_TTL_MS = 60_000;
+const SITE_SETTINGS_CACHE_KEY = 'dodaham-site-settings-cache-v1';
+
+let memoryCache: { value: SiteSettings; cachedAt: number } | null = null;
+let inflightSettings: Promise<SiteSettings> | null = null;
+
+function readStoredSettingsCache(): SiteSettings | null {
   try {
-    const snap = await getDoc(doc(db, 'portfolios', 'admin_default'));
-    if (snap.exists()) {
-      const raw = snap.data().data;
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (parsed?.siteSettings) {
-        return normalizeSiteSettings(parsed.siteSettings);
-      }
+    const raw = sessionStorage.getItem(SITE_SETTINGS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { value?: SiteSettings; cachedAt?: number };
+    if (parsed?.value && typeof parsed.cachedAt === 'number' && Date.now() - parsed.cachedAt < CACHE_TTL_MS) {
+      return normalizeSiteSettings(parsed.value);
     }
   } catch {
-    // Fallback to defaults
+    // Ignore storage errors
   }
-  return { ...DEFAULT_SITE_SETTINGS };
+  return null;
+}
+
+function writeSettingsCache(value: SiteSettings) {
+  const cachedAt = Date.now();
+  memoryCache = { value, cachedAt };
+  try {
+    sessionStorage.setItem(SITE_SETTINGS_CACHE_KEY, JSON.stringify({ value, cachedAt }));
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+export async function fetchSiteSettings(): Promise<SiteSettings> {
+  if (memoryCache && Date.now() - memoryCache.cachedAt < CACHE_TTL_MS) {
+    return memoryCache.value;
+  }
+
+  const stored = readStoredSettingsCache();
+  if (stored) {
+    memoryCache = { value: stored, cachedAt: Date.now() };
+    return stored;
+  }
+
+  if (inflightSettings) {
+    return inflightSettings;
+  }
+
+  inflightSettings = (async () => {
+    try {
+      const snap = await getDoc(doc(db, 'portfolios', 'admin_default'));
+      if (snap.exists()) {
+        const raw = snap.data().data;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (parsed?.siteSettings) {
+          const normalized = normalizeSiteSettings(parsed.siteSettings);
+          writeSettingsCache(normalized);
+          return normalized;
+        }
+      }
+    } catch {
+      // Fallback to defaults
+    } finally {
+      inflightSettings = null;
+    }
+    const fallback = { ...DEFAULT_SITE_SETTINGS };
+    writeSettingsCache(fallback);
+    return fallback;
+  })();
+
+  return inflightSettings;
 }

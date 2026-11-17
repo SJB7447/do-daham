@@ -9,8 +9,9 @@ import { auth } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import { ActivityItem, ActivityCategory } from '../types/activity';
-import FaceBlurStudioModal from './FaceBlurStudioModal';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
+
+const FaceBlurStudioModal = React.lazy(() => import('./FaceBlurStudioModal'));
 import { 
   DEFAULT_ACTIVITIES, 
   fetchActivitiesFromCloud, 
@@ -934,27 +935,31 @@ export default function ActivityPage() {
         </div>
       </footer>
 
-      {/* ── Face Blur Studio Modal (Privacy Protection) ── */}
-      <FaceBlurStudioModal
-        isOpen={isBlurStudioOpen}
-        onClose={() => setIsBlurStudioOpen(false)}
-        imageSrcs={uploadedPhotos.length > 0 ? uploadedPhotos.map(p => p.raw) : (formData.imageUrl ? [formData.imageUrl] : [])}
-        onApply={(processedDataUrls) => {
-          if (processedDataUrls.length > 0) {
-            setUploadedPhotos(prev => prev.map((p, idx) => ({
-              ...p,
-              processed: processedDataUrls[idx] || p.raw,
-              isBlurred: true
-            })));
-            setFormData(prev => ({
-              ...prev,
-              imageUrl: processedDataUrls[0],
-              additionalImages: processedDataUrls.slice(1)
-            }));
-            setIsBlurredApplied(true);
-          }
-        }}
-      />
+      {/* ── Face Blur Studio Modal (Lazy-loaded Privacy Protection) ── */}
+      {isBlurStudioOpen && (
+        <React.Suspense fallback={null}>
+          <FaceBlurStudioModal
+            isOpen={isBlurStudioOpen}
+            onClose={() => setIsBlurStudioOpen(false)}
+            imageSrcs={uploadedPhotos.length > 0 ? uploadedPhotos.map(p => p.raw) : (formData.imageUrl ? [formData.imageUrl] : [])}
+            onApply={(processedDataUrls) => {
+              if (processedDataUrls.length > 0) {
+                setUploadedPhotos(prev => prev.map((p, idx) => ({
+                  ...p,
+                  processed: processedDataUrls[idx] || p.raw,
+                  isBlurred: true
+                })));
+                setFormData(prev => ({
+                  ...prev,
+                  imageUrl: processedDataUrls[0],
+                  additionalImages: processedDataUrls.slice(1)
+                }));
+                setIsBlurredApplied(true);
+              }
+            }}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }
