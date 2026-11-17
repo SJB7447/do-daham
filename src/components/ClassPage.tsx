@@ -4,6 +4,8 @@ import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import StudentShowcaseSection from './StudentShowcaseSection';
+import { JellySlider } from './JellySlider';
+import { ScrambleNumber } from './ScrambleNumber';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
 import { DEFAULT_SITE_SETTINGS, fetchSiteSettings, SiteSettings } from '../lib/siteSettings';
 
@@ -249,30 +251,28 @@ export default function ClassPage() {
               ))}
             </div>
 
-            <div className="flex items-baseline justify-between mb-3">
-              <label htmlFor="group-drop-slider" className="text-sm font-bold text-[#8C8C8C]">
+            <div className="flex items-baseline justify-between mb-4">
+              <span className="text-sm font-bold text-[#8C8C8C]">
                 함께 듣는 인원
-              </label>
+              </span>
               <div>
-                <span className="ff-disp text-4xl text-[#C6FF00]">{headcount}</span>
+                <ScrambleNumber
+                  value={headcount}
+                  className="ff-disp text-4xl text-[#C6FF00]"
+                  durationMs={180}
+                />
                 <span className="text-sm font-bold ml-1">명</span>
               </div>
             </div>
 
-            <input
-              id="group-drop-slider"
-              type="range"
-              min={MIN_TO_OPEN}
-              max={MAX_CAPACITY}
-              value={headcount}
-              onChange={(e) => setHeadcount(Number(e.target.value))}
-              className="w-full accent-[#C6FF00] cursor-pointer h-2 bg-white/10 rounded-[2px]"
-            />
-
-            <div className="flex justify-between text-[11px] font-bold text-[#8C8C8C] mt-2 mb-6">
-              <span>1~5명 (8만원)</span>
-              <span>10~15명 (2.5만원)</span>
-              <span>16~30명 (1.5만원)</span>
+            <div className="mb-6">
+              <JellySlider
+                min={MIN_TO_OPEN}
+                max={MAX_CAPACITY}
+                value={headcount}
+                onChange={setHeadcount}
+                ariaLabel="함께 듣는 인원 조절"
+              />
             </div>
 
             {/* Tier Badges */}
@@ -312,16 +312,24 @@ export default function ClassPage() {
             <div className="ticket-head text-center">{pricing.tierLabel}</div>
             <div className="ticket-main-row">
               <span className="text-sm font-bold text-[#333]">1인 1회차 수강료</span>
-              <span className="ticket-price">{pricing.perSession.toLocaleString('ko-KR')}원</span>
+              <span className="ticket-price">
+                <ScrambleNumber value={pricing.perSession} suffix="원" durationMs={260} />
+              </span>
             </div>
             <div className="ticket-sub-row">
               <span>{sessions}회 총 수강료</span>
-              <span className="font-extrabold text-[#0A0A0A]">{pricing.total.toLocaleString('ko-KR')}원</span>
+              <span className="font-extrabold text-[#0A0A0A]">
+                <ScrambleNumber value={pricing.total} suffix="원" durationMs={280} />
+              </span>
             </div>
             <div className="py-3 flex items-center justify-between text-xs border-b border-black/15">
               <span className="text-[#444]">소수정예(8만원) 대비</span>
               <span className="px-2 py-0.5 bg-[#0A0A0A] text-[#C6FF00] font-extrabold rounded-[2px]">
-                {pricing.saved > 0 ? `SAVE ${pricing.saved.toLocaleString('ko-KR')}원` : '개인 맞춤 · 공모전 디렉팅'}
+                {pricing.saved > 0 ? (
+                  <ScrambleNumber value={pricing.saved} prefix="SAVE " suffix="원" durationMs={280} />
+                ) : (
+                  '개인 맞춤 · 공모전 디렉팅'
+                )}
               </span>
             </div>
             <div className="py-3 flex items-center justify-between text-xs">
