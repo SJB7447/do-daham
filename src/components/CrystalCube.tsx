@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface CrystalCubeProps {
   size: number;
@@ -7,16 +7,75 @@ interface CrystalCubeProps {
   interactive?: boolean;
 }
 
-interface FacetDef {
-  pts: [[number, number], [number, number], [number, number]];
+interface FacetColorPair {
   c1: string;
   c2: string;
+}
+
+interface FacetDef extends FacetColorPair {
+  pts: [[number, number], [number, number], [number, number]];
   normal: [number, number, number]; // 3D surface normal for sculpted relief shading
+}
+
+const DARK_FACET_COLORS: FacetColorPair[] = [
+  // Top face
+  { c1: '#FFF000', c2: '#C6FF00' },
+  { c1: '#FF8A00', c2: '#E02898' },
+  { c1: '#D020A0', c2: '#8028D8' },
+  { c1: '#8C38C8', c2: '#D6FF00' },
+  // Right face
+  { c1: '#28C8F0', c2: '#18A0E0' },
+  { c1: '#18B8D0', c2: '#9ECC00' },
+  { c1: '#B6E020', c2: '#6090C0' },
+  { c1: '#5870C8', c2: '#32C0E0' },
+  // Left face
+  { c1: '#8830D0', c2: '#5028C0' },
+  { c1: '#4428C0', c2: '#1860C0' },
+  { c1: '#1870C0', c2: '#28B0D0' },
+  { c1: '#28A0C8', c2: '#7030D0' }
+];
+
+const LIGHT_FACET_COLORS: FacetColorPair[] = [
+  // Top face: botanical lime-sage -> emerald, sunlit amber -> berry-rose, deep rose -> amethyst, amethyst -> emerald
+  { c1: '#84CC16', c2: '#15803D' },
+  { c1: '#F59E0B', c2: '#BE185D' },
+  { c1: '#9D174D', c2: '#6D28D9' },
+  { c1: '#7E22CE', c2: '#22C55E' },
+  // Right face: cerulean -> jade teal, deep teal -> forest green, botanical green -> ocean blue, royal azure -> cyan-teal
+  { c1: '#0284C7', c2: '#0D9488' },
+  { c1: '#0F766E', c2: '#15803D' },
+  { c1: '#16A34A', c2: '#0369A1' },
+  { c1: '#2563EB', c2: '#06B6D4' },
+  // Left face: deep violet -> indigo, deep indigo -> sapphire, cobalt -> ocean teal, cyan-teal -> plum-violet
+  { c1: '#5B21B6', c2: '#3730A3' },
+  { c1: '#312E81', c2: '#1E40AF' },
+  { c1: '#1D4ED8', c2: '#0E7490' },
+  { c1: '#0891B2', c2: '#4C1D95' }
+];
+
+function useIsLightTheme(): boolean {
+  const [isLight, setIsLight] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const sync = () => setIsLight(root.getAttribute('data-theme') === 'light');
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  return isLight;
 }
 
 export function CrystalCube({ size, pfx, className = '', interactive = false }: CrystalCubeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointerRef = useRef({ x: 0.5, y: 0.35, tx: 0.5, ty: 0.35, active: false, tActive: 0 });
+  const isLight = useIsLightTheme();
 
   const sc = size / 280;
   const V = {
@@ -55,24 +114,30 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
     const rfc = s(V.rfc);
     const lfc = s(V.lfc);
 
+    const palette = isLight ? LIGHT_FACET_COLORS : DARK_FACET_COLORS;
+
     // 12 sculpted diamond-cut facets with 3D surface normals (creates tangible relief & curvature)
-    const facets: FacetDef[] = [
+    const facetGeo: { pts: FacetDef['pts']; normal: FacetDef['normal'] }[] = [
       // Top face (angled upward + sculpted pyramid relief)
-      { pts: [top, tr, tfc], c1: '#FFF000', c2: '#C6FF00', normal: [0.28, -0.82, 0.5] },
-      { pts: [tr, ctr, tfc], c1: '#FF8A00', c2: '#E02898', normal: [0.42, -0.58, 0.7] },
-      { pts: [ctr, tl, tfc], c1: '#D020A0', c2: '#8028D8', normal: [-0.35, -0.62, 0.7] },
-      { pts: [tl, top, tfc], c1: '#8C38C8', c2: '#D6FF00', normal: [-0.28, -0.85, 0.44] },
+      { pts: [top, tr, tfc], normal: [0.28, -0.82, 0.5] },
+      { pts: [tr, ctr, tfc], normal: [0.42, -0.58, 0.7] },
+      { pts: [ctr, tl, tfc], normal: [-0.35, -0.62, 0.7] },
+      { pts: [tl, top, tfc], normal: [-0.28, -0.85, 0.44] },
       // Right face (angled right + sculpted relief)
-      { pts: [tr, br, rfc], c1: '#28C8F0', c2: '#18A0E0', normal: [0.85, -0.1, 0.52] },
-      { pts: [br, bot, rfc], c1: '#18B8D0', c2: '#9ECC00', normal: [0.68, 0.45, 0.58] },
-      { pts: [bot, ctr, rfc], c1: '#B6E020', c2: '#6090C0', normal: [0.45, 0.35, 0.82] },
-      { pts: [ctr, tr, rfc], c1: '#5870C8', c2: '#32C0E0', normal: [0.62, -0.32, 0.72] },
+      { pts: [tr, br, rfc], normal: [0.85, -0.1, 0.52] },
+      { pts: [br, bot, rfc], normal: [0.68, 0.45, 0.58] },
+      { pts: [bot, ctr, rfc], normal: [0.45, 0.35, 0.82] },
+      { pts: [ctr, tr, rfc], normal: [0.62, -0.32, 0.72] },
       // Left face (angled left + deeper shadow relief)
-      { pts: [tl, ctr, lfc], c1: '#8830D0', c2: '#5028C0', normal: [-0.62, -0.3, 0.72] },
-      { pts: [ctr, bot, lfc], c1: '#4428C0', c2: '#1860C0', normal: [-0.45, 0.35, 0.82] },
-      { pts: [bot, bl, lfc], c1: '#1870C0', c2: '#28B0D0', normal: [-0.68, 0.45, 0.58] },
-      { pts: [bl, tl, lfc], c1: '#28A0C8', c2: '#7030D0', normal: [-0.85, -0.1, 0.52] }
+      { pts: [tl, ctr, lfc], normal: [-0.62, -0.3, 0.72] },
+      { pts: [ctr, bot, lfc], normal: [-0.45, 0.35, 0.82] },
+      { pts: [bot, bl, lfc], normal: [-0.68, 0.45, 0.58] },
+      { pts: [bl, tl, lfc], normal: [-0.85, -0.1, 0.52] }
     ];
+    const facets: FacetDef[] = facetGeo.map((geo, idx) => ({
+      ...geo,
+      ...palette[idx]
+    }));
 
     const tracePoly = (pts: [number, number][]) => {
       ctx.beginPath();
@@ -135,13 +200,13 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
           rad
         );
         if (dot > 0.2) {
-          curveGrad.addColorStop(0, `rgba(255,255,255,${(0.16 + dot * 0.26).toFixed(3)})`);
-          curveGrad.addColorStop(0.65, 'rgba(255,255,255,0)');
-          curveGrad.addColorStop(1, 'rgba(0,0,0,0.22)');
+          curveGrad.addColorStop(0, `rgba(255,255,255,${((isLight ? 0.20 : 0.16) + dot * (isLight ? 0.28 : 0.26)).toFixed(3)})`);
+          curveGrad.addColorStop(isLight ? 0.68 : 0.65, 'rgba(255,255,255,0)');
+          curveGrad.addColorStop(1, isLight ? 'rgba(15,23,18,0.14)' : 'rgba(0,0,0,0.22)');
         } else {
-          curveGrad.addColorStop(0, 'rgba(0,0,0,0.06)');
-          curveGrad.addColorStop(0.65, 'rgba(0,0,0,0.18)');
-          curveGrad.addColorStop(1, 'rgba(0,0,0,0.38)');
+          curveGrad.addColorStop(0, isLight ? 'rgba(15,23,18,0.03)' : 'rgba(0,0,0,0.06)');
+          curveGrad.addColorStop(0.65, isLight ? 'rgba(15,23,18,0.11)' : 'rgba(0,0,0,0.18)');
+          curveGrad.addColorStop(1, isLight ? 'rgba(15,23,18,0.24)' : 'rgba(0,0,0,0.38)');
         }
         ctx.fillStyle = curveGrad;
         ctx.fill();
@@ -163,8 +228,8 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
       ctx.fillRect(0, 0, size, size);
 
       // Soft ambient occlusion rim inside the hexagon silhouette for 3D thickness
-      ctx.lineWidth = 10 * sc;
-      ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+      ctx.lineWidth = (isLight ? 6 : 10) * sc;
+      ctx.strokeStyle = isLight ? 'rgba(20, 28, 22, 0.16)' : 'rgba(0,0,0,0.28)';
       tracePoly([top, tr, br, bot, bl, tl]);
       ctx.stroke();
       ctx.restore();
@@ -185,7 +250,7 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
 
       // Specular bevel highlight on Y-ridges
       ctx.lineWidth = 1.4 * sc;
-      ctx.strokeStyle = `rgba(255,255,255,${(0.45 + 0.25 * p.tActive).toFixed(2)})`;
+      ctx.strokeStyle = `rgba(255,255,255,${((isLight ? 0.68 : 0.45) + 0.25 * p.tActive).toFixed(2)})`;
       ctx.beginPath();
       ctx.moveTo(tl[0], tl[1]); ctx.lineTo(ctr[0], ctr[1]);
       ctx.moveTo(tr[0], tr[1]); ctx.lineTo(ctr[0], ctr[1]);
@@ -194,7 +259,9 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
 
       // Outer crystal bevel rim
       ctx.lineWidth = 1.2 * sc;
-      ctx.strokeStyle = `rgba(255,255,255,${(0.32 + 0.22 * p.tActive).toFixed(2)})`;
+      ctx.strokeStyle = isLight
+        ? 'rgba(20, 22, 18, 0.26)'
+        : `rgba(255,255,255,${(0.32 + 0.22 * p.tActive).toFixed(2)})`;
       tracePoly([top, tr, br, bot, bl, tl]);
       ctx.stroke();
 
@@ -235,25 +302,30 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
       el?.removeEventListener('pointermove', kick);
       el?.removeEventListener('pointerleave', kick);
     };
-  }, [interactive, size, sc]);
+  }, [interactive, size, sc, isLight]);
 
   if (!interactive) {
     const p = (pts: number[][]) => pts.map(([x, y]) => `${(x * sc).toFixed(2)},${(y * sc).toFixed(2)}`).join(' ');
     const g = (n: number) => (n * sc).toFixed(2);
-    const grads = [
-      { id: `${pfx}t1`, x1: g(140), y1: g(30), x2: g(240), y2: g(88), c1: '#FFF000', c2: '#C6FF00' },
-      { id: `${pfx}t2`, x1: g(240), y1: g(88), x2: g(140), y2: g(145), c1: '#FF8A00', c2: '#E02898' },
-      { id: `${pfx}t3`, x1: g(140), y1: g(145), x2: g(40), y2: g(88), c1: '#D020A0', c2: '#8028D8' },
-      { id: `${pfx}t4`, x1: g(40), y1: g(88), x2: g(140), y2: g(30), c1: '#8C38C8', c2: '#D6FF00' },
-      { id: `${pfx}r1`, x1: g(240), y1: g(88), x2: g(190), y2: g(174), c1: '#28C8F0', c2: '#18A0E0' },
-      { id: `${pfx}r2`, x1: g(240), y1: g(202), x2: g(140), y2: g(260), c1: '#18B8D0', c2: '#9ECC00' },
-      { id: `${pfx}r3`, x1: g(140), y1: g(260), x2: g(190), y2: g(174), c1: '#B6E020', c2: '#6090C0' },
-      { id: `${pfx}r4`, x1: g(140), y1: g(145), x2: g(240), y2: g(88), c1: '#5870C8', c2: '#32C0E0' },
-      { id: `${pfx}l1`, x1: g(40), y1: g(88), x2: g(140), y2: g(145), c1: '#8830D0', c2: '#5028C0' },
-      { id: `${pfx}l2`, x1: g(140), y1: g(145), x2: g(140), y2: g(260), c1: '#4428C0', c2: '#1860C0' },
-      { id: `${pfx}l3`, x1: g(140), y1: g(260), x2: g(40), y2: g(202), c1: '#1870C0', c2: '#28B0D0' },
-      { id: `${pfx}l4`, x1: g(40), y1: g(202), x2: g(40), y2: g(88), c1: '#28A0C8', c2: '#7030D0' },
+    const palette = isLight ? LIGHT_FACET_COLORS : DARK_FACET_COLORS;
+    const gradCoords = [
+      { id: `${pfx}t1`, x1: g(140), y1: g(30), x2: g(240), y2: g(88) },
+      { id: `${pfx}t2`, x1: g(240), y1: g(88), x2: g(140), y2: g(145) },
+      { id: `${pfx}t3`, x1: g(140), y1: g(145), x2: g(40), y2: g(88) },
+      { id: `${pfx}t4`, x1: g(40), y1: g(88), x2: g(140), y2: g(30) },
+      { id: `${pfx}r1`, x1: g(240), y1: g(88), x2: g(190), y2: g(174) },
+      { id: `${pfx}r2`, x1: g(240), y1: g(202), x2: g(140), y2: g(260) },
+      { id: `${pfx}r3`, x1: g(140), y1: g(260), x2: g(190), y2: g(174) },
+      { id: `${pfx}r4`, x1: g(140), y1: g(145), x2: g(240), y2: g(88) },
+      { id: `${pfx}l1`, x1: g(40), y1: g(88), x2: g(140), y2: g(145) },
+      { id: `${pfx}l2`, x1: g(140), y1: g(145), x2: g(140), y2: g(260) },
+      { id: `${pfx}l3`, x1: g(140), y1: g(260), x2: g(40), y2: g(202) },
+      { id: `${pfx}l4`, x1: g(40), y1: g(202), x2: g(40), y2: g(88) },
     ];
+    const grads = gradCoords.map((coord, idx) => ({
+      ...coord,
+      ...palette[idx]
+    }));
     const { top, tr, br, bot, bl, tl, ctr, tfc, rfc, lfc } = V;
     const tris = [
       { pts: p([top, tr, tfc]), gid: `${pfx}t1` },
@@ -271,6 +343,8 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
     ];
     const sw = sc.toFixed(2);
     const sw2 = (sc * 0.8).toFixed(2);
+    const outerStroke = isLight ? 'rgba(20,22,18,.32)' : 'rgba(255,255,255,.30)';
+    const innerStroke = isLight ? 'rgba(255,255,255,.42)' : 'rgba(255,255,255,.15)';
 
     return (
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className={`crystal-svg ${className}`} aria-hidden="true">
@@ -285,10 +359,10 @@ export function CrystalCube({ size, pfx, className = '', interactive = false }: 
         {tris.map((t, idx) => (
           <polygon key={idx} points={t.pts} fill={`url(#${t.gid})`} />
         ))}
-        <polygon points={p([top, tr, br, bot, bl, tl])} fill="none" stroke="rgba(255,255,255,.30)" strokeWidth={sw} />
-        <line x1={g(140)} y1={g(30)} x2={g(140)} y2={g(145)} stroke="rgba(255,255,255,.15)" strokeWidth={sw2} />
-        <line x1={g(240)} y1={g(88)} x2={g(90)} y2={g(174)} stroke="rgba(255,255,255,.15)" strokeWidth={sw2} />
-        <line x1={g(40)} y1={g(88)} x2={g(190)} y2={g(174)} stroke="rgba(255,255,255,.15)" strokeWidth={sw2} />
+        <polygon points={p([top, tr, br, bot, bl, tl])} fill="none" stroke={outerStroke} strokeWidth={sw} />
+        <line x1={g(140)} y1={g(30)} x2={g(140)} y2={g(145)} stroke={innerStroke} strokeWidth={sw2} />
+        <line x1={g(240)} y1={g(88)} x2={g(90)} y2={g(174)} stroke={innerStroke} strokeWidth={sw2} />
+        <line x1={g(40)} y1={g(88)} x2={g(190)} y2={g(174)} stroke={innerStroke} strokeWidth={sw2} />
       </svg>
     );
   }
