@@ -255,44 +255,47 @@ export default function InstructorsPage() {
                   className={`inst-card ${inst.isLead ? 'is-lead' : ''}`}
                 >
                   {/* Top Photo / Avatar Area */}
-                  <div className="inst-card-media">
+                  <div className={`inst-card-media ${inst.photoUrl ? 'has-photo' : ''}`}>
                     <span
                       className={`inst-badge ${inst.isLead ? 'is-lead' : ''}`}
                     >
                       {inst.badgeText}
                     </span>
 
-                    <div
-                      className="inst-avatar-circle overflow-hidden"
-                      style={{ borderColor: toThemeAccent(inst.accent) }}
-                    >
-                      {inst.photoUrl ? (
+                    {inst.photoUrl ? (
+                      <>
                         <img
                           src={inst.photoUrl}
                           alt={inst.name}
-                          className="w-full h-full object-cover rounded-full"
+                          className="inst-card-photo"
                         />
-                      ) : inst.isLead ? (
-                        <CrystalCube size={56} pfx={`inst-${inst.id}`} />
-                      ) : (
-                        <span
-                          className="font-bold text-2xl tracking-wider"
-                          style={{ color: toThemeAccent(inst.accent) }}
-                        >
-                          {inst.initials}
+                        <span className="inst-card-photo-caption">
+                          {inst.isLead ? 'DIRECTOR · LEAD INSTRUCTOR' : 'PARTNER INSTRUCTOR'}
                         </span>
-                      )}
-                    </div>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="inst-avatar-circle overflow-hidden"
+                          style={{ borderColor: toThemeAccent(inst.accent) }}
+                        >
+                          {inst.isLead ? (
+                            <CrystalCube size={56} pfx={`inst-${inst.id}`} />
+                          ) : (
+                            <span
+                              className="font-bold text-2xl tracking-wider"
+                              style={{ color: toThemeAccent(inst.accent) }}
+                            >
+                              {inst.initials}
+                            </span>
+                          )}
+                        </div>
 
-                    <div className="text-[11px] font-bold tracking-[0.12em] text-[#A3A79F] mt-3">
-                      {inst.isLead
-                        ? inst.photoUrl
-                          ? 'DIRECTOR · LEAD INSTRUCTOR'
-                          : 'DIRECTOR · 대표 강사'
-                        : inst.photoUrl
-                          ? 'PARTNER INSTRUCTOR'
-                          : 'PARTNER · DO-DAHAM'}
-                    </div>
+                        <div className="text-[11px] font-bold tracking-[0.12em] text-[#A3A79F] mt-3">
+                          {inst.isLead ? 'DIRECTOR · 대표 강사' : 'PARTNER · DO-DAHAM'}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Card Body */}
@@ -490,25 +493,34 @@ export default function InstructorsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 pb-5 border-b border-white/[0.08]">
-              <div>
-                <span
-                  className="inline-block text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1 rounded-[2px] mb-2.5"
-                  style={
-                    selectedInstructor.isLead
-                      ? { backgroundColor: 'var(--acid)', color: 'var(--bg)', border: '1px solid var(--acid)' }
-                      : {
-                          backgroundColor: 'transparent',
-                          color: toThemeAccent(selectedInstructor.accent),
-                          border: `1px solid ${toThemeAccent(selectedInstructor.accent)}`
-                        }
-                  }
-                >
-                  {selectedInstructor.badgeText}
-                </span>
-                <h2 id="inst-modal-title" className="font-bold text-2xl sm:text-3xl tracking-tight leading-tight">
-                  {selectedInstructor.name}
-                </h2>
-                <p className="text-xs font-semibold text-[#A3A79F] mt-1.5">{selectedInstructor.role}</p>
+              <div className="flex items-start gap-4">
+                {selectedInstructor.photoUrl && (
+                  <img
+                    src={selectedInstructor.photoUrl}
+                    alt={selectedInstructor.name}
+                    className="w-16 h-20 rounded-[2px] object-cover object-[center_18%] border border-white/[0.16] shrink-0"
+                  />
+                )}
+                <div>
+                  <span
+                    className="inline-block text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1 rounded-[2px] mb-2.5"
+                    style={
+                      selectedInstructor.isLead
+                        ? { backgroundColor: 'var(--acid)', color: 'var(--bg)', border: '1px solid var(--acid)' }
+                        : {
+                            backgroundColor: 'transparent',
+                            color: toThemeAccent(selectedInstructor.accent),
+                            border: `1px solid ${toThemeAccent(selectedInstructor.accent)}`
+                          }
+                    }
+                  >
+                    {selectedInstructor.badgeText}
+                  </span>
+                  <h2 id="inst-modal-title" className="font-bold text-2xl sm:text-3xl tracking-tight leading-tight">
+                    {selectedInstructor.name}
+                  </h2>
+                  <p className="text-xs font-semibold text-[#A3A79F] mt-1.5">{selectedInstructor.role}</p>
+                </div>
               </div>
               <button
                 ref={modalCloseRef}

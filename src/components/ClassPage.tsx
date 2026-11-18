@@ -476,39 +476,50 @@ export default function ClassPage() {
                 }`}
               >
                 <div
-                  className={`inst-card-media ${
-                    isSingle ? '!h-[220px] lg:!h-full lg:border-b-0 lg:border-r lg:border-white/[0.08]' : '!h-[210px]'
+                  className={`inst-card-media ${inst.photoUrl ? 'has-photo' : ''} ${
+                    isSingle
+                      ? '!h-[240px] lg:!h-full lg:min-h-[260px] lg:border-b-0 lg:border-r lg:border-white/[0.08]'
+                      : '!h-[210px]'
                   }`}
                 >
                   <span className={`inst-badge ${inst.isLead ? 'is-lead' : ''}`}>
                     {inst.badgeText}
                   </span>
 
-                  <div
-                    className="inst-avatar-circle overflow-hidden"
-                    style={{ borderColor: accentColor }}
-                  >
-                    {inst.photoUrl ? (
+                  {inst.photoUrl ? (
+                    <>
                       <img
                         src={inst.photoUrl}
                         alt={inst.name}
-                        className="w-full h-full object-cover rounded-full"
+                        className="inst-card-photo"
                       />
-                    ) : inst.isLead ? (
-                      <CrystalCube size={56} pfx={`clsinst-${inst.id}`} />
-                    ) : (
-                      <span
-                        className="font-bold text-2xl tracking-wider"
-                        style={{ color: accentColor }}
-                      >
-                        {inst.initials}
+                      <span className="inst-card-photo-caption">
+                        {inst.isLead ? 'DIRECTOR' : 'PARTNER INSTRUCTOR'}
                       </span>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="inst-avatar-circle overflow-hidden"
+                        style={{ borderColor: accentColor }}
+                      >
+                        {inst.isLead ? (
+                          <CrystalCube size={56} pfx={`clsinst-${inst.id}`} />
+                        ) : (
+                          <span
+                            className="font-bold text-2xl tracking-wider"
+                            style={{ color: accentColor }}
+                          >
+                            {inst.initials}
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
-                    {inst.isLead ? 'DIRECTOR' : 'PARTNER INSTRUCTOR'}
-                  </div>
+                      <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
+                        {inst.isLead ? 'DIRECTOR' : 'PARTNER INSTRUCTOR'}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="inst-card-body justify-between">

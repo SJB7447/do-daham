@@ -719,13 +719,13 @@ export default function InstructorProfileEditPage() {
                   <Sparkles size={13} /> LIVE PREVIEW · 공개 강사 카드 미리보기
                 </div>
                 <article className="inst-card is-lead">
-                  <div className="inst-card-media">
+                  <div className={`inst-card-media ${form.photoUrl ? 'has-photo' : ''}`}>
                     <span className="inst-badge is-lead">미리보기</span>
                     {form.photoUrl ? (
                       <img
                         src={form.photoUrl}
                         alt={form.displayName || '강사 프로필'}
-                        className="w-28 h-28 rounded-full object-cover border-2 border-[#C6FF00]"
+                        className="inst-card-photo"
                       />
                     ) : (
                       <div className="inst-avatar-circle">
