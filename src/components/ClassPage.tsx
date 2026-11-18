@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Pencil } from 'lucide-react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { isAuthorizedAdmin } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import StudentShowcaseSection from './StudentShowcaseSection';
@@ -10,7 +13,7 @@ import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib
 import {
   InstructorProfile,
   fetchApprovedInstructors,
-  getLeadInstructor,
+  mergeInstructorsWithLead,
   toThemeAccent
 } from '../lib/instructorsData';
 import {
@@ -81,6 +84,7 @@ export default function ClassPage() {
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
   const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => auth.currentUser);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,13 +97,19 @@ export default function ClassPage() {
     fetchApprovedInstructors().then((list) => {
       if (!cancelled) setApprovedInstructors(list);
     });
+    const unsub = onAuthStateChanged(auth, setCurrentUser);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 
+  const isAdmin = isAuthorizedAdmin(currentUser?.email);
+  const canEditCard = (inst: InstructorProfile) =>
+    Boolean(currentUser && ((inst.uid && inst.uid === currentUser.uid) || (inst.isLead && isAdmin)));
+
   const allInstructors = useMemo(
-    () => [getLeadInstructor(metrics), ...approvedInstructors],
+    () => mergeInstructorsWithLead(metrics, approvedInstructors),
     [metrics, approvedInstructors]
   );
 
@@ -447,23 +457,16 @@ export default function ClassPage() {
           {allInstructors.map((inst) => {
             const isSingle = allInstructors.length === 1;
             const accentColor = toThemeAccent(inst.accent);
-            const chips = inst.isLead
-              ? [
-                  `누적 강의 ${(inst.lectureHours || 400).toLocaleString('ko-KR')}시간+`,
-                  `누적 수강생 ${(inst.studentCount || 320).toLocaleString('ko-KR')}명+`,
-                  'AI 디지털 튜터 양성 과정 메인 강사',
-                  '에이블런 · 디지털 배움터 출강',
-                  '경기관광공사 영상 공모전 입상'
-                ]
-              : [
-                  ...(inst.showStats && ((inst.lectureHours || 0) > 0 || (inst.studentCount || 0) > 0)
-                    ? [
-                        `강의 ${(inst.lectureHours || 0).toLocaleString('ko-KR')}시간+ · 수강생 ${(inst.studentCount || 0).toLocaleString('ko-KR')}명+`
-                      ]
-                    : []),
-                  ...inst.tags,
-                  ...inst.credentials.slice(0, 2).map((c) => c.text)
-                ];
+            const chips = [
+              ...(inst.showStats && ((inst.lectureHours || 0) > 0 || (inst.studentCount || 0) > 0)
+                ? [
+                    `누적 강의 ${(inst.lectureHours || 0).toLocaleString('ko-KR')}시간+`,
+                    `누적 수강생 ${(inst.studentCount || 0).toLocaleString('ko-KR')}명+`
+                  ]
+                : []),
+              ...inst.tags,
+              ...inst.credentials.slice(0, 3).map((c) => c.text)
+            ];
 
             return (
               <article
@@ -526,9 +529,7 @@ export default function ClassPage() {
                     </div>
 
                     <p className="text-[14.5px] font-medium leading-[1.75] text-[#F2F2F2]/90 mb-5 break-keep">
-                      {inst.isLead
-                        ? '수업에서 보여드리는 작품은 모두 직접 만든 것입니다. 만드는 과정에서 막힌 지점을 그대로 가르칩니다.'
-                        : inst.bio}
+                      {inst.bio}
                     </p>
 
                     {chips.length > 0 && (
@@ -542,17 +543,28 @@ export default function ClassPage() {
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between gap-3">
+                  <div className="pt-4 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs font-semibold text-[#A3A79F]">
                       {inst.activeClassTitle}
                     </span>
-                    <Link
-                      to="/class/instructors"
-                      className="text-xs font-bold hover:underline shrink-0"
-                      style={{ color: accentColor }}
-                    >
-                      상세 프로필 · 수업 일정 보기 →
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-4 shrink-0">
+                      {canEditCard(inst) && (
+                        <Link
+                          to="/instructor/profile"
+                          className="text-xs font-bold inline-flex items-center gap-1 hover:underline"
+                          style={{ color: accentColor }}
+                        >
+                          <Pencil size={12} /> 내 프로필 수정 →
+                        </Link>
+                      )}
+                      <Link
+                        to="/class/instructors"
+                        className="text-xs font-bold hover:underline shrink-0"
+                        style={{ color: accentColor }}
+                      >
+                        상세 프로필 · 수업 일정 보기 →
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </article>

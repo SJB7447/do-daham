@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
 import { clearSiteSettingsCache, DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
+import { clearClassMetricsCache } from '../lib/classMetrics';
+import { clearApprovedInstructorsCache } from '../lib/instructorsData';
 import { fetchFormSubmissions } from '../lib/formSubmissions';
 import AdminSubmissionsPanel from './AdminSubmissionsPanel';
 import { LetterLimitTextarea } from './LetterLimitTextarea';
@@ -385,6 +387,8 @@ export default function AdminDashboard() {
     if (target && !target.isSample) {
       try {
         await updateDoc(doc(db, 'instructors', id), { status: nextStatus });
+        clearApprovedInstructorsCache();
+        clearClassMetricsCache();
       } catch (err) {
         console.warn('Instructor approval update failed in Firestore:', err);
       }

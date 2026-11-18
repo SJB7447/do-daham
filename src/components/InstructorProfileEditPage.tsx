@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { Calendar, CheckCircle2, ImagePlus, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
+import { Calendar, CheckCircle2, ImagePlus, Plus, RotateCcw, Save, Sparkles, Trash2 } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
+import { clearClassMetricsCache } from '../lib/classMetrics';
+import { clearApprovedInstructorsCache, getLeadInstructor } from '../lib/instructorsData';
 import { SiteHeader } from './SiteHeader';
 import { InstructorQuickTabs } from './InstructorQuickTabs';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
@@ -36,10 +38,29 @@ interface InstructorFormState {
   status: 'draft' | 'pending' | 'approved' | 'rejected';
 }
 
+function getLeadDefaultFormState(): InstructorFormState {
+  const lead = getLeadInstructor();
+  return {
+    displayName: lead.name,
+    title: lead.role,
+    bio: lead.bio,
+    photoUrl: '',
+    tags: ['AI 영상 연출', '홈페이지 · 웹 구축', '업무 자동화'],
+    credentials: lead.credentials.map((c) => `${c.label}: ${c.text}`),
+    activeDays: lead.activeDays as Weekday[],
+    scheduleTime: lead.scheduleTime,
+    showStats: Boolean(lead.showStats),
+    lectureHours: lead.lectureHours || 400,
+    studentCount: lead.studentCount || 320,
+    status: 'approved'
+  };
+}
+
 export default function InstructorProfileEditPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthorizedInstructor, setIsAuthorizedInstructor] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [notice, setNotice] = useState('');
@@ -65,42 +86,88 @@ export default function InstructorProfileEditPage() {
       setUser(currentUser);
       if (!currentUser) {
         setIsAuthorizedInstructor(false);
+        setIsAdminUser(false);
         setAuthLoading(false);
         return;
       }
 
-      const isAdminUser = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      const adminFlag = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      setIsAdminUser(adminFlag);
 
       try {
         const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
         if (snap.exists()) {
           setIsAuthorizedInstructor(true);
           const d = snap.data();
+          const leadDefaults = adminFlag ? getLeadDefaultFormState() : null;
+          const loadedCreds = Array.isArray(d.credentials)
+            ? d.credentials.filter((c: unknown) => typeof c === 'string' && c.trim()).slice(0, 5)
+            : [];
           setForm({
-            displayName: String(d.displayName || currentUser.displayName || ''),
-            title: String(d.title || ''),
-            bio: String(d.bio || ''),
+            displayName: String(
+              d.displayName || (leadDefaults ? leadDefaults.displayName : currentUser.displayName) || ''
+            ),
+            title: String(d.title || (leadDefaults ? leadDefaults.title : '')),
+            bio: String(d.bio || (leadDefaults ? leadDefaults.bio : '')),
             photoUrl: String(d.photoUrl || ''),
-            tags: Array.isArray(d.tags) && d.tags.length > 0 ? d.tags : ['AI 영상 연출'],
+            tags:
+              Array.isArray(d.tags) && d.tags.length > 0
+                ? d.tags
+                : leadDefaults
+                  ? leadDefaults.tags
+                  : ['AI 영상 연출'],
             credentials:
-              Array.isArray(d.credentials) && d.credentials.length > 0 ? d.credentials.slice(0, 5) : [''],
-            activeDays: Array.isArray(d.activeDays) ? d.activeDays : ['화', '목'],
-            scheduleTime: String(d.scheduleTime || '19:30 – 21:30'),
-            showStats: Boolean(d.showStats),
-            lectureHours: Number(d.lectureHours || 0),
-            studentCount: Number(d.studentCount || 0),
-            status: d.status || 'draft'
+              loadedCreds.length > 0
+                ? loadedCreds
+                : leadDefaults
+                  ? leadDefaults.credentials
+                  : [''],
+            activeDays:
+              Array.isArray(d.activeDays) && d.activeDays.length > 0
+                ? d.activeDays
+                : leadDefaults
+                  ? leadDefaults.activeDays
+                  : ['화', '목'],
+            scheduleTime: String(
+              d.scheduleTime || (leadDefaults ? leadDefaults.scheduleTime : '19:30 – 21:30')
+            ),
+            showStats:
+              d.showStats !== undefined
+                ? Boolean(d.showStats)
+                : leadDefaults
+                  ? leadDefaults.showStats
+                  : false,
+            lectureHours:
+              d.lectureHours !== undefined
+                ? Number(d.lectureHours || 0)
+                : leadDefaults
+                  ? leadDefaults.lectureHours
+                  : 0,
+            studentCount:
+              d.studentCount !== undefined
+                ? Number(d.studentCount || 0)
+                : leadDefaults
+                  ? leadDefaults.studentCount
+                  : 0,
+            status: d.status || (leadDefaults ? 'approved' : 'draft')
           });
         } else {
-          setIsAuthorizedInstructor(isAdminUser);
-          setForm((prev) => ({
-            ...prev,
-            displayName: currentUser.displayName || prev.displayName
-          }));
+          setIsAuthorizedInstructor(adminFlag);
+          if (adminFlag) {
+            setForm(getLeadDefaultFormState());
+          } else {
+            setForm((prev) => ({
+              ...prev,
+              displayName: currentUser.displayName || prev.displayName
+            }));
+          }
         }
       } catch (err) {
         console.warn('Instructor profile load skipped or restricted:', err);
-        setIsAuthorizedInstructor(isAdminUser);
+        setIsAuthorizedInstructor(adminFlag);
+        if (adminFlag) {
+          setForm(getLeadDefaultFormState());
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -187,7 +254,7 @@ export default function InstructorProfileEditPage() {
     }
 
     setSaving(true);
-    const nextStatus = submitForApproval ? 'pending' : 'draft';
+    const nextStatus = submitForApproval ? (isAdminUser ? 'approved' : 'pending') : 'draft';
     try {
       await setDoc(
         doc(db, 'instructors', user.uid),
@@ -210,10 +277,14 @@ export default function InstructorProfileEditPage() {
         },
         { merge: true }
       );
+      clearApprovedInstructorsCache();
+      clearClassMetricsCache();
       setForm((prev) => ({ ...prev, status: nextStatus }));
       setNotice(
         submitForApproval
-          ? '프로필이 저장되어 운영자 승인 대기 상태로 전환되었습니다.'
+          ? isAdminUser
+            ? '대표 강사 프로필이 저장되어 공개 강사진 페이지에 즉시 반영되었습니다.'
+            : '프로필이 저장되어 운영자 승인 대기 상태로 전환되었습니다.'
           : '초안이 저장되었습니다.'
       );
     } catch (err: any) {
@@ -310,9 +381,26 @@ export default function InstructorProfileEditPage() {
                 <h1 className="ff-disp text-3xl sm:text-5xl leading-tight">강사 프로필 편집</h1>
               </div>
 
-              <Link to="/instructor/classes/new" className="hero-cta-secondary">
-                새 수업 등록하기 →
-              </Link>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {isAdminUser && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...getLeadDefaultFormState(),
+                        photoUrl: prev.photoUrl
+                      }));
+                      setNotice('대표 강사 기본값을 불러왔습니다. 수정 후 반영 버튼을 눌러주세요.');
+                    }}
+                    className="hero-cta-secondary cursor-pointer"
+                  >
+                    <RotateCcw size={14} /> 대표 강사 기본값 복원
+                  </button>
+                )}
+                <Link to="/instructor/classes/new" className="hero-cta-secondary">
+                  새 수업 등록하기 →
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -607,7 +695,12 @@ export default function InstructorProfileEditPage() {
                     onClick={() => handleSubmit(true)}
                     className="hero-cta flex-1 justify-center"
                   >
-                    <Save size={15} /> {saving ? '저장 중...' : '저장 후 승인 요청 →'}
+                    <Save size={15} />{' '}
+                    {saving
+                      ? '저장 중...'
+                      : isAdminUser
+                        ? '저장 및 공개 프로필 즉시 반영 →'
+                        : '저장 후 승인 요청 →'}
                   </button>
                   <button
                     type="button"

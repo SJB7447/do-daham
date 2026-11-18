@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, CheckCircle2, ExternalLink, Sparkles, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, ExternalLink, Pencil, Sparkles, UserPlus, X } from 'lucide-react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { isAuthorizedAdmin } from '../data/defaultActivities';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
 import {
   DayKey,
@@ -9,7 +12,7 @@ import {
   InstructorProfile,
   WEEK_DAYS,
   fetchApprovedInstructors,
-  getLeadInstructor,
+  mergeInstructorsWithLead,
   toThemeAccent
 } from '../lib/instructorsData';
 import {
@@ -28,11 +31,18 @@ export default function InstructorsPage() {
   const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => auth.currentUser);
 
   useEffect(() => {
     fetchSiteSettings().then(setSiteSettings);
     fetchLiveClassMetrics().then(setMetrics);
+    const unsub = onAuthStateChanged(auth, setCurrentUser);
+    return () => unsub();
   }, []);
+
+  const isAdmin = isAuthorizedAdmin(currentUser?.email);
+  const canEditCard = (inst: InstructorProfile) =>
+    Boolean(currentUser && ((inst.uid && inst.uid === currentUser.uid) || (inst.isLead && isAdmin)));
 
   const canApply = Boolean(siteSettings.classApplicationOpen);
   const activeApplyTarget = siteSettings.classApplicationFormUrl || '/apply/class-apply';
@@ -51,7 +61,7 @@ export default function InstructorsPage() {
   }, []);
 
   const allInstructors = useMemo(
-    () => [getLeadInstructor(metrics), ...approvedInstructors],
+    () => mergeInstructorsWithLead(metrics, approvedInstructors),
     [metrics, approvedInstructors]
   );
 
@@ -120,6 +130,20 @@ export default function InstructorsPage() {
           <p className="text-sm sm:text-base font-medium text-[#A3A79F] leading-relaxed max-w-2xl break-keep">
             실제 AI 영상과 웹서비스를 제작·수상한 현업 디렉터와 승인된 파트너 강사진의 전문 분야 및 만나는 시간을 확인하세요.
           </p>
+
+          {currentUser && (
+            <div className="mt-6 flex flex-wrap items-center gap-2.5 pt-5 border-t border-white/[0.08]">
+              <span className="text-xs font-bold text-[#A3A79F] mr-1">
+                {isAdmin ? '대표 강사 · 관리자 로그인됨' : '강사 계정 로그인됨'} ({currentUser.email})
+              </span>
+              <Link to="/instructor/profile" className="hero-cta text-xs !min-h-[40px] !py-2 !px-4">
+                <Pencil size={13} /> 내 강사 프로필 수정 →
+              </Link>
+              <Link to="/instructor/classes/new" className="hero-cta-secondary text-xs !min-h-[40px] !py-2 !px-4">
+                + 새 수업 등록 →
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
@@ -261,7 +285,13 @@ export default function InstructorsPage() {
                     </div>
 
                     <div className="text-[11px] font-bold tracking-[0.12em] text-[#A3A79F] mt-3">
-                      {inst.isLead ? 'DIRECTOR · 실사 사진 교체 예정' : inst.photoUrl ? 'PARTNER INSTRUCTOR' : 'PARTNER · DO-DAHAM'}
+                      {inst.isLead
+                        ? inst.photoUrl
+                          ? 'DIRECTOR · LEAD INSTRUCTOR'
+                          : 'DIRECTOR · 대표 강사'
+                        : inst.photoUrl
+                          ? 'PARTNER INSTRUCTOR'
+                          : 'PARTNER · DO-DAHAM'}
                     </div>
                   </div>
 
@@ -358,17 +388,28 @@ export default function InstructorsPage() {
                       </div>
                     </div>
 
-                    {/* Action Button Only (Card itself is not clickable) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        lastTriggerRef.current = e.currentTarget;
-                        setSelectedInstructor(inst);
-                      }}
-                      className={inst.isLead ? 'hero-cta w-full justify-center' : 'hero-cta-secondary w-full justify-center'}
-                    >
-                      프로필 · 수업 보기 →
-                    </button>
+                    {/* Action Buttons (Card itself is not clickable) */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          lastTriggerRef.current = e.currentTarget;
+                          setSelectedInstructor(inst);
+                        }}
+                        className={inst.isLead ? 'hero-cta w-full justify-center' : 'hero-cta-secondary w-full justify-center'}
+                      >
+                        프로필 · 수업 보기 →
+                      </button>
+                      {canEditCard(inst) && (
+                        <Link
+                          to="/instructor/profile"
+                          className="hero-cta-secondary w-full justify-center"
+                          style={{ borderColor: toThemeAccent(inst.accent), color: toThemeAccent(inst.accent) }}
+                        >
+                          <Pencil size={13} /> 내 프로필 수정 →
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}
@@ -520,6 +561,19 @@ export default function InstructorsPage() {
             </div>
 
             <div className="pt-4 border-t border-white/[0.08] flex flex-col sm:flex-row gap-3">
+              {canEditCard(selectedInstructor) && (
+                <Link
+                  to="/instructor/profile"
+                  onClick={() => setSelectedInstructor(null)}
+                  className="hero-cta-secondary justify-center"
+                  style={{
+                    borderColor: toThemeAccent(selectedInstructor.accent),
+                    color: toThemeAccent(selectedInstructor.accent)
+                  }}
+                >
+                  <Pencil size={13} /> 내 프로필 수정 →
+                </Link>
+              )}
               {selectedInstructor.activeClassTo ? (
                 <Link
                   to={selectedInstructor.activeClassTo}

@@ -1,12 +1,15 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { BASE_LECTURE_HOURS, BASE_STUDENTS } from './classMetrics';
+import { ADMIN_EMAILS } from '../data/defaultActivities';
 
 export type FieldFilter = 'ALL' | 'AI 영상 · 연출' | '웹 · 서비스' | '업무 자동화';
 export type DayKey = 'ALL' | '일' | '월' | '화' | '수' | '목' | '금' | '토';
 
 export interface InstructorProfile {
   id: string;
+  uid?: string;
+  emailLower?: string;
   name: string;
   initials: string;
   isLead: boolean;
@@ -81,11 +84,53 @@ export function getLeadInstructor(metrics?: {
   };
 }
 
+function isLeadInstructorRecord(emailLower?: unknown, displayName?: unknown): boolean {
+  const email = String(emailLower || '').trim().toLowerCase();
+  const name = String(displayName || '').trim();
+  return (email !== '' && ADMIN_EMAILS.includes(email)) || name === '심정보';
+}
+
+function parseCredentialItem(raw: string, idx: number, isLead: boolean): { label: string; text: string } {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^([A-Za-z0-9가-힣\s]{2,14})\s*[:|·]\s*(.+)$/);
+  if (match) {
+    return {
+      label: match[1].trim().toUpperCase(),
+      text: match[2].trim()
+    };
+  }
+  const leadDefaults = ['AWARD', 'MAIN', 'TEACHING', 'CAREER 4', 'CAREER 5'];
+  const label = isLead ? leadDefaults[idx] || `CAREER ${idx + 1}` : `CAREER ${idx + 1}`;
+  return { label, text: trimmed };
+}
+
+function inferFieldsFromTags(tags: string[]): Exclude<FieldFilter, 'ALL'>[] {
+  const matched = new Set<Exclude<FieldFilter, 'ALL'>>();
+  tags.forEach((tag) => {
+    if (/영상|숏폼|사운드|음악/.test(tag)) matched.add('AI 영상 · 연출');
+    if (/웹|홈페이지|노코드/.test(tag)) matched.add('웹 · 서비스');
+    if (/자동화|기획/.test(tag)) matched.add('업무 자동화');
+  });
+  return matched.size > 0
+    ? Array.from(matched)
+    : ['AI 영상 · 연출', '웹 · 서비스', '업무 자동화'];
+}
+
 const CACHE_TTL_MS = 60_000;
-const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v1';
+const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v2';
 
 let approvedMemoryCache: { value: InstructorProfile[]; cachedAt: number } | null = null;
 let inflightApproved: Promise<InstructorProfile[]> | null = null;
+
+export function clearApprovedInstructorsCache() {
+  approvedMemoryCache = null;
+  inflightApproved = null;
+  try {
+    sessionStorage.removeItem(APPROVED_INSTRUCTORS_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function readStoredApprovedCache(): InstructorProfile[] | null {
   try {
@@ -143,26 +188,30 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
       const palette = ['#28B8E8', '#F5C400', '#C6FF00'];
       const loaded: InstructorProfile[] = snap.docs.map((docSnap, idx) => {
         const d = docSnap.data();
+        const emailLower = String(d.emailLower || '').trim().toLowerCase();
         const name = String(d.displayName || '파트너 강사');
-        const accent = palette[idx % palette.length];
+        const isLead = isLeadInstructorRecord(emailLower, name);
+        const accent = isLead ? '#C6FF00' : palette[idx % palette.length];
         const tags: string[] = Array.isArray(d.tags) ? d.tags.filter(Boolean) : [];
         return {
           id: docSnap.id,
+          uid: docSnap.id,
+          emailLower,
           name,
           initials: name.slice(0, 2).toUpperCase(),
-          isLead: false,
+          isLead,
           isExample: false,
-          badgeText: '파트너 강사',
+          badgeText: isLead ? '대표 강사' : '파트너 강사',
           accent,
           role: String(d.title || 'DO-DAHAM 파트너 강사'),
           bio: String(d.bio || ''),
           detailBio: String(d.bio || ''),
-          fields: ['AI 영상 · 연출', '웹 · 서비스', '업무 자동화'],
+          fields: inferFieldsFromTags(tags),
           tags,
           credentials: Array.isArray(d.credentials)
             ? d.credentials
                 .filter((c: unknown) => typeof c === 'string' && c.trim())
-                .map((c: string, i: number) => ({ label: `CAREER ${i + 1}`, text: c }))
+                .map((c: string, i: number) => parseCredentialItem(c, i, isLead))
             : [],
           activeDays: Array.isArray(d.activeDays) ? d.activeDays : [],
           scheduleTime: String(d.scheduleTime || '시간 협의'),
@@ -185,4 +234,35 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
   })();
 
   return inflightApproved;
+}
+
+export function mergeInstructorsWithLead(
+  metrics?: { totalHours?: number; totalStudents?: number },
+  approvedList: InstructorProfile[] = []
+): InstructorProfile[] {
+  const baseLead = getLeadInstructor(metrics);
+  const savedLead = approvedList.find((inst) => inst.isLead);
+  const mergedLead: InstructorProfile = savedLead
+    ? {
+        ...baseLead,
+        uid: savedLead.uid,
+        emailLower: savedLead.emailLower,
+        name: savedLead.name || baseLead.name,
+        initials: savedLead.initials || baseLead.initials,
+        role: savedLead.role || baseLead.role,
+        bio: savedLead.bio || baseLead.bio,
+        detailBio: savedLead.bio || baseLead.detailBio,
+        fields: savedLead.fields.length > 0 ? savedLead.fields : baseLead.fields,
+        tags: savedLead.tags.length > 0 ? savedLead.tags : baseLead.tags,
+        credentials: savedLead.credentials.length > 0 ? savedLead.credentials : baseLead.credentials,
+        activeDays: savedLead.activeDays.length > 0 ? savedLead.activeDays : baseLead.activeDays,
+        scheduleTime: savedLead.scheduleTime || baseLead.scheduleTime,
+        showStats: savedLead.showStats ?? baseLead.showStats,
+        lectureHours: savedLead.lectureHours || baseLead.lectureHours,
+        studentCount: savedLead.studentCount || baseLead.studentCount,
+        photoUrl: savedLead.photoUrl || baseLead.photoUrl
+      }
+    : baseLead;
+
+  return [mergedLead, ...approvedList.filter((inst) => !inst.isLead)];
 }

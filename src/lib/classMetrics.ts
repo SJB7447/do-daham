@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
+import { ADMIN_EMAILS } from '../data/defaultActivities';
 
 export const BASE_LECTURE_HOURS = 400;
 export const BASE_STUDENTS = 320;
@@ -25,10 +26,20 @@ export const DEFAULT_METRICS: LiveClassMetrics = {
 };
 
 const CACHE_TTL_MS = 60_000;
-const CLASS_METRICS_CACHE_KEY = 'dodaham-class-metrics-cache-v1';
+const CLASS_METRICS_CACHE_KEY = 'dodaham-class-metrics-cache-v2';
 
 let metricsMemoryCache: { value: LiveClassMetrics; cachedAt: number } | null = null;
 let inflightMetrics: Promise<LiveClassMetrics> | null = null;
+
+export function clearClassMetricsCache() {
+  metricsMemoryCache = null;
+  inflightMetrics = null;
+  try {
+    sessionStorage.removeItem(CLASS_METRICS_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function readStoredMetricsCache(): LiveClassMetrics | null {
   try {
@@ -76,6 +87,8 @@ export async function fetchLiveClassMetrics(): Promise<LiveClassMetrics> {
   }
 
   inflightMetrics = (async () => {
+    let leadBaseHours = BASE_LECTURE_HOURS;
+    let leadBaseStudents = BASE_STUDENTS;
     let instructorAddedHours = 0;
     let instructorAddedStudents = 0;
     let startedClassesCount = 0;
@@ -91,9 +104,18 @@ export async function fetchLiveClassMetrics(): Promise<LiveClassMetrics> {
       if (instResult.status === 'fulfilled') {
         instResult.value.forEach((docSnap) => {
           const d = docSnap.data();
-          if (d.showStats === true) {
-            const hrs = Number(d.lectureHours || 0);
-            const std = Number(d.studentCount || 0);
+          const isLead =
+            ADMIN_EMAILS.includes(String(d.emailLower || '').trim().toLowerCase()) ||
+            String(d.displayName || '').trim() === '심정보';
+          const hrs = Number(d.lectureHours || 0);
+          const std = Number(d.studentCount || 0);
+
+          if (isLead) {
+            if (d.showStats !== false) {
+              leadBaseHours = hrs > 0 ? hrs : BASE_LECTURE_HOURS;
+              leadBaseStudents = std > 0 ? std : BASE_STUDENTS;
+            }
+          } else if (d.showStats === true) {
             if (hrs > 0) instructorAddedHours += hrs;
             if (std > 0) instructorAddedStudents += std;
           }
@@ -116,8 +138,8 @@ export async function fetchLiveClassMetrics(): Promise<LiveClassMetrics> {
     }
 
     const result: LiveClassMetrics = {
-      totalHours: BASE_LECTURE_HOURS + instructorAddedHours + startedClassHours,
-      totalStudents: BASE_STUDENTS + instructorAddedStudents + startedClassStudents,
+      totalHours: leadBaseHours + instructorAddedHours + startedClassHours,
+      totalStudents: leadBaseStudents + instructorAddedStudents + startedClassStudents,
       instructorAddedHours,
       instructorAddedStudents,
       startedClassesCount,
