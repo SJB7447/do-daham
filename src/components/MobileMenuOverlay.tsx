@@ -124,7 +124,7 @@ export function MobileMenuOverlay({
               href={watchHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-extrabold tracking-wider text-[#8C8C8C] hover:text-[#C6FF00] px-2.5 py-2 border border-white/15 rounded-[2px]"
+              className="text-xs font-semibold tracking-normal text-[#A3A79F] hover:text-[#C6FF00] px-2.5 py-2 border border-white/15 rounded-[2px]"
             >
               유튜브 →
             </a>
@@ -159,7 +159,7 @@ export function MobileMenuOverlay({
                   <span className="mobile-menu-num">{item.num}</span>
                   <div className="flex flex-col">
                     <span className="mobile-menu-title">{item.label}</span>
-                    <span className="text-[11px] font-semibold text-[#8C8C8C] mt-0.5">{item.sub}</span>
+                    <span className="text-[12.5px] font-medium text-[#A3A79F] mt-0.5">{item.sub}</span>
                   </div>
                 </Link>
 
@@ -172,7 +172,7 @@ export function MobileMenuOverlay({
                           key={sub.to}
                           to={sub.to}
                           onClick={onClose}
-                          className={`text-xs font-bold px-3 py-2 rounded-[2px] border transition-colors ${
+                          className={`text-[13px] font-semibold px-3 py-2 rounded-[2px] border transition-colors ${
                             subActive
                               ? 'border-[#C6FF00] bg-[#C6FF00]/15 text-[#C6FF00]'
                               : 'border-white/[0.14] text-[#F2F2F2]/80 hover:border-[#C6FF00] hover:text-[#C6FF00]'

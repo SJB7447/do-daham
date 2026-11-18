@@ -77,7 +77,7 @@ export function SiteHeader({
             <span className="nav-logo-text uppercase tracking-wider">{brandName}</span>
           </Link>
           {badge && (
-            <span className="px-2 py-0.5 text-[10px] font-extrabold tracking-widest bg-[#C6FF00] text-[#0A0A0A] rounded-[2px] shrink-0">
+            <span className="px-2 py-0.5 text-[11px] font-bold tracking-wider bg-[#C6FF00] text-[#0A0A0A] rounded-[2px] shrink-0">
               {badge}
             </span>
           )}
