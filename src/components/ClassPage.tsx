@@ -420,16 +420,16 @@ export default function ClassPage() {
           <h2 className="sec-title">가르치는 사람이 직접 만듭니다</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-white/[0.08] mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-white/[0.08] mb-10 select-none">
           {[
-            { label: 'LECTURE HOURS', val: `${metrics.totalHours.toLocaleString('ko-KR')}시간+\n누적 AI 실무 강의`, accent: true },
-            { label: 'STUDENTS', val: `${metrics.totalStudents.toLocaleString('ko-KR')}명+\n누적 수강생`, accent: true },
-            { label: 'AWARD', val: '경기관광공사\n영상 공모전 입상', accent: false },
-            { label: 'TEACHING', val: 'AI 디지털 튜터 양성\n에이블런 · 배움터 출강', accent: false }
+            { label: 'LECTURE HOURS', val: `${metrics.totalHours.toLocaleString('ko-KR')}시간+\n누적 AI 실무 강의` },
+            { label: 'STUDENTS', val: `${metrics.totalStudents.toLocaleString('ko-KR')}명+\n누적 수강생` },
+            { label: 'AWARD', val: '경기관광공사\n영상 공모전 입상' },
+            { label: 'TEACHING', val: 'AI 디지털 튜터 양성\n에이블런 · 배움터 출강' }
           ].map((item, idx) => (
             <div key={idx} className="p-6 border-b sm:border-b-0 sm:border-r last:border-r-0 border-white/[0.08]">
               <div className="trust-label">{item.label}</div>
-              <div className={`font-bold text-lg sm:text-xl tracking-tight whitespace-pre-line leading-snug ${item.accent ? 'text-[#C6FF00]' : ''}`}>
+              <div className="font-bold text-lg sm:text-xl tracking-tight whitespace-pre-line leading-snug text-[#F2F2F2]">
                 {item.val}
               </div>
             </div>

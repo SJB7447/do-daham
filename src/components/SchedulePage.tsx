@@ -201,26 +201,37 @@ export default function SchedulePage() {
 
           {/* Summary 3 Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-8">
-            <div className="bg-[#11120E] border border-white/[0.08] rounded-[2px] p-5">
-              <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#8C8C8C] mb-1.5">
+            <div className="bg-[#11120E] border border-white/[0.08] rounded-[2px] p-5 select-none">
+              <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#C6FF00] mb-1.5">
                 OPEN CLASSES
               </div>
-              <div className="ff-disp text-3xl text-[#F2F2F2]">{scheduleClasses.length}개</div>
-              <div className="text-xs text-[#8C8C8C] mt-1">현재 모집 · 대기 중 과정</div>
+              <div className="ff-disp text-3xl text-[#F2F2F2]">
+                {scheduleClasses.length}
+                <span className="acid">개</span>
+              </div>
+              <div className="text-xs font-medium text-[#A3A79F] mt-1">현재 모집 · 대기 중 과정</div>
             </div>
-            <div className="bg-[#11120E] border border-[#C6FF00]/35 rounded-[2px] p-5">
+            <div className="bg-[#11120E] border border-white/[0.08] rounded-[2px] p-5 select-none">
               <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#C6FF00] mb-1.5">
                 CONFIRMED
               </div>
-              <div className="ff-disp text-3xl text-[#C6FF00]">{confirmedCount}개 확정</div>
-              <div className="text-xs text-[#8C8C8C] mt-1">최소 인원 달성 클래스</div>
+              <div className="ff-disp text-3xl text-[#F2F2F2]">
+                {confirmedCount}
+                <span className="acid">개 확정</span>
+              </div>
+              <div className="text-xs font-medium text-[#A3A79F] mt-1">최소 인원 달성 클래스</div>
             </div>
-            <div className="bg-[#11120E] border border-white/[0.08] rounded-[2px] p-5">
-              <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#8C8C8C] mb-1.5">
+            <div className="bg-[#11120E] border border-white/[0.08] rounded-[2px] p-5 select-none">
+              <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#C6FF00] mb-1.5">
                 SESSIONS THIS MONTH
               </div>
-              <div className="ff-disp text-3xl text-[#F2F2F2]">{totalSessionsThisMonth}회</div>
-              <div className="text-xs text-[#8C8C8C] mt-1">12월 예정 총 수업 회차</div>
+              <div className="ff-disp text-3xl text-[#F2F2F2]">
+                {totalSessionsThisMonth}
+                <span className="acid">회</span>
+              </div>
+              <div className="text-xs font-medium text-[#A3A79F] mt-1">
+                {currentMonthIndex + 1}월 예정 총 수업 회차
+              </div>
             </div>
           </div>
         </div>
