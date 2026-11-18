@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Calendar, CheckCircle2, ExternalLink, Sparkles, UserPlus, X } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { BASE_LECTURE_HOURS, BASE_STUDENTS } from '../lib/classMetrics';
+import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
+import {
+  DayKey,
+  FIELD_OPTIONS,
+  FieldFilter,
+  InstructorProfile,
+  WEEK_DAYS,
+  fetchApprovedInstructors,
+  getLeadInstructor,
+  toThemeAccent
+} from '../lib/instructorsData';
 import {
   DEFAULT_SITE_SETTINGS,
   fetchSiteSettings,
@@ -13,91 +21,17 @@ import {
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 
-type FieldFilter = 'ALL' | 'AI 영상 · 연출' | '웹 · 서비스' | '업무 자동화';
-type DayKey = 'ALL' | '일' | '월' | '화' | '수' | '목' | '금' | '토';
-
-interface InstructorProfile {
-  id: string;
-  name: string;
-  initials: string;
-  isLead: boolean;
-  isExample: boolean;
-  badgeText: string;
-  accent: string;
-  role: string;
-  bio: string;
-  detailBio: string;
-  fields: Exclude<FieldFilter, 'ALL'>[];
-  tags: string[];
-  credentials: { label: string; text: string }[];
-  activeDays: Exclude<DayKey, 'ALL'>[];
-  scheduleTime: string;
-  activeClassTitle: string;
-  activeClassStatus: string;
-  activeClassTo?: string;
-  showStats?: boolean;
-  lectureHours?: number;
-  studentCount?: number;
-  photoUrl?: string;
-}
-
-const WEEK_DAYS: Exclude<DayKey, 'ALL'>[] = ['일', '월', '화', '수', '목', '금', '토'];
-const FIELD_OPTIONS: { value: FieldFilter; label: string }[] = [
-  { value: 'ALL', label: '전체 분야' },
-  { value: 'AI 영상 · 연출', label: 'AI 영상 · 연출' },
-  { value: '웹 · 서비스', label: '웹 · 서비스' },
-  { value: '업무 자동화', label: '업무 자동화' }
-];
-
-function toThemeAccent(hex: string): string {
-  const normalized = hex.trim().toUpperCase();
-  if (normalized === '#C6FF00') return 'var(--acid)';
-  if (normalized === '#28B8E8' || normalized === '#28C8F0') return 'var(--cyan)';
-  if (normalized === '#F5C400') return 'var(--amber)';
-  if (normalized === '#E02898') return 'var(--magenta)';
-  return hex;
-}
-
-const INSTRUCTORS: InstructorProfile[] = [
-  {
-    id: 'sim-jeongbo',
-    name: '심정보',
-    initials: 'SJB',
-    isLead: true,
-    isExample: false,
-    badgeText: '대표 강사',
-    accent: '#C6FF00',
-    role: 'DO-DAHAM 대표 · AI 크리에이티브 디렉터',
-    bio: '광고·숏폼·웹서비스를 직접 제작하는 크리에이터. 도구를 외우는 수업이 아니라 각자의 실제 결과물을 완성하는 실전 강의를 진행합니다.',
-    detailBio:
-      '경기관광공사 AI 영상 공모전 입상작(Code:M Studio)을 비롯해 다양한 AI 영상 프로젝트와 웹서비스를 직접 기획·제작하고 있습니다. 수강생의 직무와 목표에 맞춘 프롬프트 설계부터 최종 결과물 피드백까지 전 과정을 함께합니다.',
-    fields: ['AI 영상 · 연출', '웹 · 서비스', '업무 자동화'],
-    tags: ['AI 영상 연출', '홈페이지 · 웹 구축', '실무 AI 자동화'],
-    credentials: [
-      { label: 'AWARD', text: '경기관광공사 AI 영상 공모전 입상 (Code:M Studio)' },
-      { label: 'LECTURE', text: '기관 · 기업 · 소그룹 AI 실무/영상 출강 다수' },
-      { label: 'STUDIO', text: 'AI 영상 · 홈페이지 · 웹서비스 직접 기획 및 개발' }
-    ],
-    activeDays: ['화', '목', '토'],
-    scheduleTime: '19:00 – 21:00 · 주말 협의',
-    activeClassTitle: 'AI 실무 클래스 1기 (6회)',
-    activeClassStatus: '사전 모집 중 · 1~30명 규모별 개설',
-    activeClassTo: '/class',
-    showStats: true,
-    lectureHours: BASE_LECTURE_HOURS,
-    studentCount: BASE_STUDENTS
-  }
-];
-
 export default function InstructorsPage() {
   const [fieldFilter, setFieldFilter] = useState<FieldFilter>('ALL');
   const [dayFilter, setDayFilter] = useState<DayKey>('ALL');
   const [selectedInstructor, setSelectedInstructor] = useState<InstructorProfile | null>(null);
   const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
+  const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
     fetchSiteSettings().then(setSiteSettings);
+    fetchLiveClassMetrics().then(setMetrics);
   }, []);
 
   const canApply = Boolean(siteSettings.classApplicationOpen);
@@ -108,59 +42,17 @@ export default function InstructorsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadApprovedInstructors() {
-      try {
-        const snap = await getDocs(
-          query(collection(db, 'instructors'), where('status', '==', 'approved'))
-        );
-        if (cancelled || snap.empty) return;
-
-        const palette = ['#28B8E8', '#F5C400', '#C6FF00'];
-        const loaded: InstructorProfile[] = snap.docs.map((docSnap, idx) => {
-          const d = docSnap.data();
-          const name = String(d.displayName || '파트너 강사');
-          const accent = palette[idx % palette.length];
-          const tags: string[] = Array.isArray(d.tags) ? d.tags : [];
-          return {
-            id: docSnap.id,
-            name,
-            initials: name.slice(0, 2).toUpperCase(),
-            isLead: false,
-            isExample: false,
-            badgeText: '파트너 강사',
-            accent,
-            role: String(d.title || 'DO-DAHAM 파트너 강사'),
-            bio: String(d.bio || ''),
-            detailBio: String(d.bio || ''),
-            fields: ['AI 영상 · 연출', '웹 · 서비스', '업무 자동화'],
-            tags,
-            credentials: Array.isArray(d.credentials)
-              ? d.credentials.map((c: string, i: number) => ({ label: `CAREER ${i + 1}`, text: c }))
-              : [],
-            activeDays: Array.isArray(d.activeDays) ? d.activeDays : [],
-            scheduleTime: String(d.scheduleTime || '시간 협의'),
-            activeClassTitle: '개설 수업 준비 중',
-            activeClassStatus: '일정 공지 예정',
-            showStats: Boolean(d.showStats),
-            lectureHours: Number(d.lectureHours || 0),
-            studentCount: Number(d.studentCount || 0),
-            photoUrl: String(d.photoUrl || '')
-          };
-        });
-        setApprovedInstructors(loaded);
-      } catch {
-        // Ignore if Firestore rules/network unavailable
-      }
-    }
-    loadApprovedInstructors();
+    fetchApprovedInstructors().then((loaded) => {
+      if (!cancelled) setApprovedInstructors(loaded);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const allInstructors = useMemo(
-    () => [...INSTRUCTORS, ...approvedInstructors],
-    [approvedInstructors]
+    () => [getLeadInstructor(metrics), ...approvedInstructors],
+    [metrics, approvedInstructors]
   );
 
   const filteredInstructors = useMemo(() => {
@@ -225,7 +117,7 @@ export default function InstructorsPage() {
             <br />
             <span className="text-[#C6FF00]">직접 만듭니다.</span>
           </h1>
-          <p className="text-sm sm:text-base text-[#8C8C8C] leading-relaxed max-w-2xl break-keep">
+          <p className="text-sm sm:text-base font-medium text-[#A3A79F] leading-relaxed max-w-2xl break-keep">
             실제 AI 영상과 웹서비스를 제작·수상한 현업 디렉터와 승인된 파트너 강사진의 전문 분야 및 만나는 시간을 확인하세요.
           </p>
         </div>
@@ -347,14 +239,20 @@ export default function InstructorsPage() {
                     </span>
 
                     <div
-                      className="inst-avatar-circle"
+                      className="inst-avatar-circle overflow-hidden"
                       style={{ borderColor: toThemeAccent(inst.accent) }}
                     >
-                      {inst.isLead ? (
+                      {inst.photoUrl ? (
+                        <img
+                          src={inst.photoUrl}
+                          alt={inst.name}
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : inst.isLead ? (
                         <CrystalCube size={56} pfx={`inst-${inst.id}`} />
                       ) : (
                         <span
-                          className="ff-disp text-2xl tracking-wider"
+                          className="font-bold text-2xl tracking-wider"
                           style={{ color: toThemeAccent(inst.accent) }}
                         >
                           {inst.initials}
@@ -362,16 +260,16 @@ export default function InstructorsPage() {
                       )}
                     </div>
 
-                    <div className="text-[11px] font-bold tracking-[0.12em] text-[#8C8C8C] mt-3">
-                      {inst.isLead ? '실사 프로필 사진 교체 예정' : '예시 프로필 · 자리표시'}
+                    <div className="text-[11px] font-bold tracking-[0.12em] text-[#A3A79F] mt-3">
+                      {inst.isLead ? 'DIRECTOR · 실사 사진 교체 예정' : inst.photoUrl ? 'PARTNER INSTRUCTOR' : 'PARTNER · DO-DAHAM'}
                     </div>
                   </div>
 
                   {/* Card Body */}
                   <div className="inst-card-body">
                     <div className="mb-3">
-                      <h2 className="ff-disp text-[30px] leading-tight mb-1">{inst.name}</h2>
-                      <p className="text-xs font-bold tracking-wide text-[#8C8C8C]">{inst.role}</p>
+                      <h2 className="font-bold text-[26px] tracking-tight leading-tight mb-1">{inst.name}</h2>
+                      <p className="text-xs font-semibold tracking-wide text-[#A3A79F]">{inst.role}</p>
                     </div>
 
                     {inst.showStats && ((inst.lectureHours || 0) > 0 || (inst.studentCount || 0) > 0) && (
@@ -387,7 +285,7 @@ export default function InstructorsPage() {
                       </div>
                     )}
 
-                    <p className="text-sm text-[#F2F2F2]/85 leading-relaxed break-keep mb-4">
+                    <p className="text-[14.5px] font-medium text-[#F2F2F2]/90 leading-[1.75] break-keep mb-4">
                       {inst.bio}
                     </p>
 
@@ -404,14 +302,14 @@ export default function InstructorsPage() {
 
                     <div className="border-t border-white/[0.08] pt-4 mb-5 space-y-2.5">
                       {inst.credentials.map((cred) => (
-                        <div key={cred.label} className="text-xs leading-relaxed">
+                        <div key={cred.label} className="text-[12.5px] font-medium leading-relaxed">
                           <span
                             className="inline-block font-extrabold tracking-[0.12em] mr-2"
                             style={{ color: toThemeAccent(inst.accent) }}
                           >
                             {cred.label}
                           </span>
-                          <span className="text-[#8C8C8C] break-keep">{cred.text}</span>
+                          <span className="text-[#A3A79F] break-keep">{cred.text}</span>
                         </div>
                       ))}
                     </div>
@@ -483,10 +381,10 @@ export default function InstructorsPage() {
               <div className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.16em] text-[#C6FF00] mb-2.5">
                 <UserPlus size={14} aria-hidden="true" /> RECRUITING PARTNERS
               </div>
-              <h2 className="ff-disp text-2xl sm:text-3xl leading-tight mb-2.5">
+              <h2 className="font-bold text-2xl sm:text-3xl tracking-tight leading-tight mb-2.5">
                 DO-DAHAM CLASS와 함께할 현업 AI 강사를 찾습니다
               </h2>
-              <p className="text-sm text-[#8C8C8C] leading-relaxed break-keep">
+              <p className="text-sm font-medium text-[#A3A79F] leading-relaxed break-keep">
                 자신만의 AI 영상·디자인·웹 개발·업무 자동화 실무 노하우를 가진 크리에이터라면 누구나 파트너 강사로 합류할 수 있습니다.
                 카카오톡 채널(@AI다함스튜디오) 또는 문의 폼으로 포트폴리오를 보내주세요.
               </p>
@@ -574,10 +472,10 @@ export default function InstructorsPage() {
                 >
                   {selectedInstructor.badgeText}
                 </span>
-                <h2 id="inst-modal-title" className="ff-disp text-3xl sm:text-4xl leading-none">
+                <h2 id="inst-modal-title" className="font-bold text-2xl sm:text-3xl tracking-tight leading-tight">
                   {selectedInstructor.name}
                 </h2>
-                <p className="text-xs font-bold text-[#8C8C8C] mt-1.5">{selectedInstructor.role}</p>
+                <p className="text-xs font-semibold text-[#A3A79F] mt-1.5">{selectedInstructor.role}</p>
               </div>
               <button
                 ref={modalCloseRef}
@@ -591,7 +489,7 @@ export default function InstructorsPage() {
             </div>
 
             <div className="py-5 space-y-5">
-              <p className="text-sm sm:text-base text-[#F2F2F2]/90 leading-relaxed break-keep">
+              <p className="text-[14.5px] sm:text-[15.5px] font-medium text-[#F2F2F2]/90 leading-[1.75] break-keep">
                 {selectedInstructor.detailBio}
               </p>
 

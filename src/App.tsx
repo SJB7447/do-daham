@@ -40,7 +40,7 @@ const DEFAULT_PORTFOLIO_DATA = {
     highlight: "하고싶은거 다해."
   },
   masterpiece: {
-    title: "REPRESENTATIVE\nWORK",
+    title: "REPRESENTATIVE WORK",
     descriptionTitle: "경기관광공사 영상 공모전 입상작",
     descriptionSub: '"Code:M Studio"가 제작한 경기도의 새로운 매력.',
     embedSrc: "https://www.youtube.com/embed/P-b7WV-obKs"
@@ -330,7 +330,7 @@ function PortfolioHome() {
               highlight: parsed.manifesto?.highlight || "하고싶은거 다해."
             },
             masterpiece: {
-              title: parsed.masterpiece?.title || "REPRESENTATIVE\nWORK",
+              title: String(parsed.masterpiece?.title || "REPRESENTATIVE WORK").replace(/^REPRESENTATIVE\s*\n\s*WORK$/i, "REPRESENTATIVE WORK"),
               descriptionTitle: parsed.masterpiece?.descriptionTitle || (parsed.masterpiece?.embedSrc ? "SELECTED WORK" : "등록된 작품이 없습니다."),
               descriptionSub: parsed.masterpiece?.descriptionSub || "",
               embedSrc: parsed.masterpiece?.embedSrc || ""
@@ -729,7 +729,7 @@ function PortfolioHome() {
               <div>일단 말 걸어.</div>
               <div className="acid">같이 다함.</div>
             </div>
-            <p className="text-sm leading-relaxed text-[#8C8C8C] max-w-md break-keep">
+            <p className="text-[14.5px] font-medium leading-relaxed text-[#A3A79F] max-w-md break-keep">
               AI 영상·홈페이지 제작도, 기관·기업 출강도 좋습니다. 카카오톡 채널 또는 문의 폼으로 언제든 질문하면 디렉터가 직접 답변드립니다.
             </p>
           </div>

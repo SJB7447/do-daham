@@ -70,7 +70,7 @@ export default function ProjectPage() {
               결과물로 다함.
             </span>
           </h1>
-          <p className="text-[15px] leading-relaxed text-[#8C8C8C] max-w-2xl mb-8 break-keep">
+          <p className="text-[15px] font-medium leading-relaxed text-[#A3A79F] max-w-2xl mb-8 break-keep">
             광고·숏폼·단편 영상부터 사업용 홈페이지와 웹서비스까지.
             <br className="hidden sm:inline" />{' '}
             불필요한 대행사 중간 과정 없이, 직접 만들고 직접 가르치는 디렉터가 책임지고 제작합니다.
@@ -131,8 +131,8 @@ export default function ProjectPage() {
               <div className="text-xs font-extrabold tracking-[0.14em] text-[#C6FF00] mb-3">
                 STEP {p.step}
               </div>
-              <h3 className="ff-disp text-xl mb-2.5">{p.title}</h3>
-              <p className="text-sm text-[#8C8C8C] leading-relaxed break-keep">{p.desc}</p>
+              <h3 className="font-bold text-xl tracking-tight mb-2.5">{p.title}</h3>
+              <p className="text-sm font-medium text-[#A3A79F] leading-relaxed break-keep">{p.desc}</p>
             </div>
           ))}
         </div>
@@ -140,41 +140,67 @@ export default function ProjectPage() {
 
       {/* 03 Director */}
       <section className="section" id="director">
-        <div className="instructor-grid">
-          <div className="instructor-photo-box">
-            <CrystalCube size={88} pfx="prjdir" />
-            <span className="text-xs text-[#8C8C8C]">[디렉터 실사 사진으로 교체]</span>
-          </div>
-          <div>
-            <div className="sec-head mb-5">
-              <span className="sec-num">03</span>
-              <h2 className="sec-title leading-tight">
-                디렉터가 직접<br />기획하고 만듭니다
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-baseline gap-3 mb-4">
-              <span className="ff-disp text-2xl">심정보</span>
-              <span className="text-sm text-[#8C8C8C]">대표 · AI 크리에이터 · 웹 빌더</span>
-            </div>
-            <div className="instructor-cred-list">
-              <div className="instructor-cred-row">
-                <span className="instructor-cred-label">AWARD</span>
-                <span>경기관광공사 영상 공모전 입상</span>
-              </div>
-              <div className="instructor-cred-row">
-                <span className="instructor-cred-label">MAIN</span>
-                <span>AI 디지털 튜터 양성 과정 메인 강사</span>
-              </div>
-              <div className="instructor-cred-row">
-                <span className="instructor-cred-label">TEACHING</span>
-                <span>AI 디지털 배움터 · 에이블런 출강</span>
-              </div>
-            </div>
-            <Link to="/activity" className="hero-cta-secondary">
-              현장 · 보도 기록 보기 →
-            </Link>
-          </div>
+        <div className="sec-head">
+          <span className="sec-num">03</span>
+          <h2 className="sec-title leading-tight">
+            디렉터가 직접 기획하고 만듭니다
+          </h2>
         </div>
+
+        <article className="inst-card is-lead !grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+          <div className="inst-card-media !h-[220px] lg:!h-full lg:border-b-0 lg:border-r lg:border-white/[0.08]">
+            <span className="inst-badge is-lead">대표 디렉터</span>
+            <div
+              className="inst-avatar-circle overflow-hidden"
+              style={{ borderColor: 'var(--acid)' }}
+            >
+              <CrystalCube size={56} pfx="prjdir" />
+            </div>
+            <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
+              DIRECTOR · 실사 사진 교체 예정
+            </div>
+          </div>
+
+          <div className="inst-card-body justify-between">
+            <div>
+              <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                <div>
+                  <h3 className="font-bold text-2xl tracking-tight leading-tight">심정보</h3>
+                  <p className="text-xs font-semibold text-[#A3A79F] mt-1">
+                    DO-DAHAM 대표 · AI 크리에이터 · 웹 빌더
+                  </p>
+                </div>
+              </div>
+
+              <div className="instructor-cred-list !my-4">
+                <div className="instructor-cred-row">
+                  <span className="instructor-cred-label">AWARD</span>
+                  <span className="font-medium">경기관광공사 영상 공모전 입상</span>
+                </div>
+                <div className="instructor-cred-row">
+                  <span className="instructor-cred-label">MAIN</span>
+                  <span className="font-medium">AI 디지털 튜터 양성 과정 메인 강사</span>
+                </div>
+                <div className="instructor-cred-row">
+                  <span className="instructor-cred-label">TEACHING</span>
+                  <span className="font-medium">AI 디지털 배움터 · 에이블런 출강</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Link to="/activity" className="hero-cta-secondary">
+                현장 · 보도 기록 보기 →
+              </Link>
+              <Link
+                to="/class/instructors"
+                className="text-xs font-bold text-[#C6FF00] hover:underline px-2 py-2"
+              >
+                강사진 전체 프로필 →
+              </Link>
+            </div>
+          </div>
+        </article>
       </section>
 
       {/* 04 Inquiry */}
@@ -190,7 +216,7 @@ export default function ProjectPage() {
               <div>일단 말 걸어.</div>
               <div className="acid">같이 다함.</div>
             </div>
-            <p className="text-sm leading-relaxed text-[#8C8C8C] max-w-md break-keep">
+            <p className="text-[14.5px] font-medium leading-relaxed text-[#A3A79F] max-w-md break-keep">
               아직 기획이 구체적이지 않아도 괜찮습니다. 만들고 싶은 방향과 일정만 알려주시면 현실적인 제작 범위와 견적을 바로 안내드립니다.
             </p>
           </div>

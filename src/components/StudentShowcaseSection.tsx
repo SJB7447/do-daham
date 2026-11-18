@@ -207,7 +207,7 @@ export default function StudentShowcaseSection() {
             <span className="sec-num">04</span>
             <h2 className="sec-title">수료생 완성 결과물</h2>
           </div>
-          <p className="text-[15px] text-[#8C8C8C] break-keep">
+          <p className="text-[15px] font-medium text-[#A3A79F] break-keep">
             수업이 끝나면 수강생의 손에 실제 결과물이 남습니다. 강사진이 직접 수료생 완성작을 수시로 업데이트합니다.
           </p>
         </div>
@@ -277,8 +277,8 @@ export default function StudentShowcaseSection() {
                     </span>
                     <span className="text-[11px] text-[#8C8C8C]">{item.studentLabel}</span>
                   </div>
-                  <h3 className="ff-disp text-xl leading-snug mb-2">{item.title}</h3>
-                  <p className="text-xs sm:text-sm text-[#8C8C8C] leading-relaxed break-keep">
+                  <h3 className="font-bold text-xl tracking-tight leading-snug mb-2">{item.title}</h3>
+                  <p className="text-[13.5px] font-medium text-[#A3A79F] leading-relaxed break-keep">
                     {item.description}
                   </p>
                 </div>
@@ -335,7 +335,7 @@ export default function StudentShowcaseSection() {
                 <div className="text-[10px] font-extrabold tracking-[0.16em] text-[#C6FF00]">
                   INSTRUCTOR UPLOAD
                 </div>
-                <h3 id="showcase-modal-title" className="ff-disp text-2xl mt-1">
+                <h3 id="showcase-modal-title" className="font-bold text-2xl tracking-tight mt-1">
                   수료생 완성 결과물 등록
                 </h3>
               </div>

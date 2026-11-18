@@ -287,7 +287,7 @@ export default function ActivityPage() {
             <h1 className="text-4xl md:text-6xl font-black tracking-tight ff-disp uppercase">
               ACTIVITY & <span className="text-[#C6FF00]">MEDIA</span>
             </h1>
-            <p className="mt-3 text-sm md:text-base text-neutral-300 max-w-2xl leading-relaxed font-light break-keep">
+            <p className="mt-3 text-sm md:text-base text-neutral-200 max-w-2xl leading-relaxed font-medium break-keep">
               강의실과 컨퍼런스 현장의 생생한 열기, 그리고 공신력 있는 언론 보도로 입증된
               <br className="hidden md:inline" /> 강사 DO-DAHAM의 실전 커리어 아카이브입니다.
             </p>
@@ -454,7 +454,7 @@ export default function ActivityPage() {
                       </h2>
 
                       {/* Description */}
-                      <p className="mt-2.5 text-xs md:text-sm text-neutral-400 leading-relaxed line-clamp-2 font-light">
+                      <p className="mt-2.5 text-[13.5px] text-[#A3A79F] leading-relaxed line-clamp-2 font-medium">
                         {item.description}
                       </p>
                     </div>
@@ -556,7 +556,7 @@ export default function ActivityPage() {
 
               {/* Headline */}
               <div>
-                <h2 className="text-2xl md:text-3xl font-black text-white leading-tight tracking-tight">
+                <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight">
                   {selectedItem.title}
                 </h2>
                 <div className="text-xs font-mono text-[#C6FF00] mt-2">
@@ -571,14 +571,14 @@ export default function ActivityPage() {
                     <Quote size={15} />
                     <span>생생한 수강생 후기 & 인터뷰 · {selectedItem.quote.speaker} {selectedItem.quote.role ? `(${selectedItem.quote.role})` : ''}</span>
                   </div>
-                  <p className="text-sm md:text-base text-neutral-200 font-light leading-relaxed italic">
+                  <p className="text-sm md:text-base text-neutral-200 font-medium leading-relaxed italic">
                     {selectedItem.quote.text}
                   </p>
                 </div>
               )}
 
               {/* Full Reportage Story */}
-              <div className="space-y-3.5 text-sm md:text-base text-neutral-300 leading-relaxed font-light border-t border-white/10 pt-6">
+              <div className="space-y-3.5 text-sm md:text-[15.5px] text-neutral-200 leading-relaxed font-medium border-t border-white/10 pt-6">
                 {(selectedItem.fullContent || selectedItem.description).split('\n\n').map((paragraph, idx) => (
                   <p key={idx} className="leading-relaxed whitespace-pre-line">
                     {paragraph}
@@ -630,7 +630,7 @@ export default function ActivityPage() {
                   <ShieldCheck size={13} />
                   <span>INSTRUCTOR CMS · VERIFIED ADMIN ({currentUser?.email})</span>
                 </div>
-                <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight ff-disp">
+                <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight">
                   새 현장 활동 / 언론 보도 등록
                 </h3>
                 <p className="text-xs text-neutral-400 mt-1">

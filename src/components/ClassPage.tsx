@@ -8,6 +8,12 @@ import { JellySlider } from './JellySlider';
 import { ScrambleNumber } from './ScrambleNumber';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from '../lib/classMetrics';
 import {
+  InstructorProfile,
+  fetchApprovedInstructors,
+  getLeadInstructor,
+  toThemeAccent
+} from '../lib/instructorsData';
+import {
   DEFAULT_SITE_SETTINGS,
   fetchSiteSettings,
   isInternalFormUrl,
@@ -73,12 +79,29 @@ export default function ClassPage() {
   const [headcount, setHeadcount] = useState<number>(12);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
+  const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
-    fetchLiveClassMetrics().then(setMetrics);
-    fetchSiteSettings().then(setSiteSettings);
+    let cancelled = false;
+    fetchLiveClassMetrics().then((m) => {
+      if (!cancelled) setMetrics(m);
+    });
+    fetchSiteSettings().then((s) => {
+      if (!cancelled) setSiteSettings(s);
+    });
+    fetchApprovedInstructors().then((list) => {
+      if (!cancelled) setApprovedInstructors(list);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const allInstructors = useMemo(
+    () => [getLeadInstructor(metrics), ...approvedInstructors],
+    [metrics, approvedInstructors]
+  );
 
   const pricing = useMemo(() => {
     let perSession = 80000;
@@ -138,7 +161,7 @@ export default function ClassPage() {
             <p className="text-xs font-extrabold tracking-[0.12em] text-[#F2F2F2] uppercase mb-3">
               WE DON&apos;T JUST TEACH TOOLS. WE BUILD REAL MASTERPIECES.
             </p>
-            <p className="text-[15px] leading-relaxed text-[#8C8C8C] max-w-xl mb-7 break-keep">
+            <p className="text-[15px] font-medium leading-relaxed text-[#A3A79F] max-w-xl mb-7 break-keep">
               도구 사용법만 배우고 끝나지 않습니다.
               <br className="hidden sm:inline" />{' '}
               수료할 때 포트폴리오용 AI 숏폼 1편과 내 업무에 바로 쓰는 템플릿이 손에 남습니다.
@@ -200,7 +223,7 @@ export default function ClassPage() {
                 <div className="class-status-pill mb-2">
                   {canApply ? '1기 사전 신청 접수 중' : '1기 개강 준비 중'}
                 </div>
-                <h2 className="ff-disp text-2xl">오프라인 실무 클래스</h2>
+                <h2 className="font-bold text-2xl tracking-tight">오프라인 실무 클래스</h2>
               </div>
               <CrystalCube size={44} pfx="clscard" />
             </div>
@@ -406,39 +429,135 @@ export default function ClassPage() {
           ].map((item, idx) => (
             <div key={idx} className="p-6 border-b sm:border-b-0 sm:border-r last:border-r-0 border-white/[0.08]">
               <div className="trust-label">{item.label}</div>
-              <div className={`ff-disp text-xl whitespace-pre-line leading-snug ${item.accent ? 'text-[#C6FF00]' : ''}`}>
+              <div className={`font-bold text-lg sm:text-xl tracking-tight whitespace-pre-line leading-snug ${item.accent ? 'text-[#C6FF00]' : ''}`}>
                 {item.val}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="instructor-grid">
-          <div className="instructor-photo-box">
-            <CrystalCube size={88} pfx="clsinst" />
-            <span className="text-xs text-[#8C8C8C]">[강사 실사 사진으로 교체]</span>
-          </div>
-          <div>
-            <div className="text-[11px] font-extrabold tracking-[0.14em] text-[#C6FF00] mb-2">DIRECTOR</div>
-            <div className="flex flex-wrap items-baseline gap-3 mb-4">
-              <span className="ff-disp text-3xl">심정보</span>
-              <span className="text-sm text-[#8C8C8C]">대표 · AI 크리에이터 · 디지털 학습 강사</span>
-            </div>
-            <p className="text-[15px] leading-relaxed text-[#F2F2F2] mb-5 break-keep">
-              수업에서 보여드리는 작품은 모두 직접 만든 것입니다. 만드는 과정에서 막힌 지점을 그대로 가르칩니다.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                `누적 강의 ${metrics.totalHours.toLocaleString('ko-KR')}시간+`,
-                `누적 수강생 ${metrics.totalStudents.toLocaleString('ko-KR')}명+`,
-                'AI 디지털 튜터 양성 과정 메인 강사',
-                '에이블런 · 디지털 배움터 출강',
-                '경기관광공사 영상 공모전 입상'
-              ].map((b) => (
-                <span key={b} className="what-tag">{b}</span>
-              ))}
-            </div>
-          </div>
+        {/* Unified Instructor Profile Cards (Lead + Approved Partner Instructors) */}
+        <div
+          className={
+            allInstructors.length === 1
+              ? 'space-y-4'
+              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+          }
+        >
+          {allInstructors.map((inst) => {
+            const isSingle = allInstructors.length === 1;
+            const accentColor = toThemeAccent(inst.accent);
+            const chips = inst.isLead
+              ? [
+                  `누적 강의 ${(inst.lectureHours || 400).toLocaleString('ko-KR')}시간+`,
+                  `누적 수강생 ${(inst.studentCount || 320).toLocaleString('ko-KR')}명+`,
+                  'AI 디지털 튜터 양성 과정 메인 강사',
+                  '에이블런 · 디지털 배움터 출강',
+                  '경기관광공사 영상 공모전 입상'
+                ]
+              : [
+                  ...(inst.showStats && ((inst.lectureHours || 0) > 0 || (inst.studentCount || 0) > 0)
+                    ? [
+                        `강의 ${(inst.lectureHours || 0).toLocaleString('ko-KR')}시간+ · 수강생 ${(inst.studentCount || 0).toLocaleString('ko-KR')}명+`
+                      ]
+                    : []),
+                  ...inst.tags,
+                  ...inst.credentials.slice(0, 2).map((c) => c.text)
+                ];
+
+            return (
+              <article
+                key={inst.id}
+                className={`inst-card ${inst.isLead ? 'is-lead' : ''} ${
+                  isSingle ? '!grid grid-cols-1 lg:grid-cols-[260px_1fr]' : ''
+                }`}
+              >
+                <div
+                  className={`inst-card-media ${
+                    isSingle ? '!h-[220px] lg:!h-full lg:border-b-0 lg:border-r lg:border-white/[0.08]' : '!h-[210px]'
+                  }`}
+                >
+                  <span className={`inst-badge ${inst.isLead ? 'is-lead' : ''}`}>
+                    {inst.badgeText}
+                  </span>
+
+                  <div
+                    className="inst-avatar-circle overflow-hidden"
+                    style={{ borderColor: accentColor }}
+                  >
+                    {inst.photoUrl ? (
+                      <img
+                        src={inst.photoUrl}
+                        alt={inst.name}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : inst.isLead ? (
+                      <CrystalCube size={56} pfx={`clsinst-${inst.id}`} />
+                    ) : (
+                      <span
+                        className="font-bold text-2xl tracking-wider"
+                        style={{ color: accentColor }}
+                      >
+                        {inst.initials}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
+                    {inst.isLead ? 'DIRECTOR' : 'PARTNER INSTRUCTOR'}
+                  </div>
+                </div>
+
+                <div className="inst-card-body justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                      <div>
+                        <h3 className="font-bold text-2xl tracking-tight leading-tight">
+                          {inst.name}
+                        </h3>
+                        <p className="text-xs font-semibold text-[#A3A79F] mt-1">{inst.role}</p>
+                      </div>
+                      {inst.scheduleTime && (
+                        <span className="text-[11px] font-semibold text-[#A3A79F] border border-white/[0.12] px-2.5 py-1 rounded-[2px]">
+                          {inst.activeDays.length > 0 ? `${inst.activeDays.join('·')} · ` : ''}
+                          {inst.scheduleTime}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-[14.5px] font-medium leading-[1.75] text-[#F2F2F2]/90 mb-5 break-keep">
+                      {inst.isLead
+                        ? '수업에서 보여드리는 작품은 모두 직접 만든 것입니다. 만드는 과정에서 막힌 지점을 그대로 가르칩니다.'
+                        : inst.bio}
+                    </p>
+
+                    {chips.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-5">
+                        {chips.map((b) => (
+                          <span key={b} className="what-tag">
+                            {b}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-[#A3A79F]">
+                      {inst.activeClassTitle}
+                    </span>
+                    <Link
+                      to="/class/instructors"
+                      className="text-xs font-bold hover:underline shrink-0"
+                      style={{ color: accentColor }}
+                    >
+                      상세 프로필 · 수업 일정 보기 →
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -448,7 +567,7 @@ export default function ClassPage() {
           <span className="sec-num">03</span>
           <h2 className="sec-title">6회 만에 작품까지</h2>
         </div>
-        <p className="text-[15px] text-[#8C8C8C] mb-8 break-keep">
+        <p className="text-[15px] font-medium text-[#A3A79F] mb-8 break-keep">
           6회 기준 예시 구성입니다. 8회 과정은 작품 완성 단계가 늘어납니다.
         </p>
 

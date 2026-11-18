@@ -195,7 +195,7 @@ export default function SchedulePage() {
             <br />
             <span className="text-[#C6FF00]">신청 현황</span>
           </h1>
-          <p className="text-sm sm:text-base text-[#8C8C8C] leading-relaxed max-w-2xl break-keep">
+          <p className="text-sm sm:text-base font-medium text-[#A3A79F] leading-relaxed max-w-2xl break-keep">
             현재 모집 중인 클래스의 인원 현황과 개설 확정 여부를 달력으로 확인하세요.
           </p>
 
@@ -291,7 +291,7 @@ export default function SchedulePage() {
             <div className="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-white/[0.08]">
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-[#C6FF00]" aria-hidden="true" />
-                <h2 className="ff-disp text-xl sm:text-2xl">{monthLabel}</h2>
+                <h2 className="font-bold text-xl sm:text-2xl tracking-tight">{monthLabel}</h2>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
@@ -488,7 +488,7 @@ export default function SchedulePage() {
                     {/* Title + Instructor + Schedule Meta */}
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                       <div>
-                        <h3 className="ff-disp text-[28px] sm:text-[32px] leading-tight mb-2">
+                        <h3 className="font-bold text-2xl sm:text-[26px] tracking-tight leading-tight mb-2">
                           {cls.title}
                         </h3>
                         <div className="flex items-center gap-2.5">
