@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Calendar, CheckCircle2, ImagePlus, Plus, RotateCcw, Save, Sparkles, Trash2 } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
@@ -149,8 +149,16 @@ export default function InstructorProfileEditPage() {
                 : leadDefaults
                   ? leadDefaults.studentCount
                   : 0,
-            status: d.status || (leadDefaults ? 'approved' : 'draft')
+            status: adminFlag ? 'approved' : d.status || 'draft'
           });
+          if (adminFlag && d.status !== 'approved') {
+            updateDoc(doc(db, 'instructors', currentUser.uid), { status: 'approved' })
+              .then(() => {
+                clearApprovedInstructorsCache();
+                clearClassMetricsCache();
+              })
+              .catch(() => {});
+          }
         } else {
           setIsAuthorizedInstructor(adminFlag);
           if (adminFlag) {
@@ -254,7 +262,7 @@ export default function InstructorProfileEditPage() {
     }
 
     setSaving(true);
-    const nextStatus = submitForApproval ? (isAdminUser ? 'approved' : 'pending') : 'draft';
+    const nextStatus = isAdminUser ? 'approved' : submitForApproval ? 'pending' : 'draft';
     try {
       await setDoc(
         doc(db, 'instructors', user.uid),
@@ -281,11 +289,11 @@ export default function InstructorProfileEditPage() {
       clearClassMetricsCache();
       setForm((prev) => ({ ...prev, status: nextStatus }));
       setNotice(
-        submitForApproval
-          ? isAdminUser
-            ? '대표 강사 프로필이 저장되어 공개 강사진 페이지에 즉시 반영되었습니다.'
-            : '프로필이 저장되어 운영자 승인 대기 상태로 전환되었습니다.'
-          : '초안이 저장되었습니다.'
+        isAdminUser
+          ? '대표 강사 프로필이 저장되어 모든 공개 페이지에 즉시 반영되었습니다.'
+          : submitForApproval
+            ? '프로필이 저장되어 운영자 승인 대기 상태로 전환되었습니다.'
+            : '초안이 저장되었습니다.'
       );
     } catch (err: any) {
       setErrorMsg('저장 중 오류가 발생했습니다: ' + (err?.message || 'Firestore 규칙을 확인하세요.'));

@@ -1,5 +1,5 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { BASE_LECTURE_HOURS, BASE_STUDENTS } from './classMetrics';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
 
@@ -160,6 +160,49 @@ function writeApprovedCache(value: InstructorProfile[]) {
   }
 }
 
+const PARTNER_PALETTE = ['#28B8E8', '#F5C400', '#C6FF00'];
+
+function mapDocToInstructorProfile(
+  docId: string,
+  d: Record<string, any>,
+  idx: number
+): InstructorProfile {
+  const emailLower = String(d.emailLower || '').trim().toLowerCase();
+  const name = String(d.displayName || '파트너 강사');
+  const isLead = isLeadInstructorRecord(emailLower, name);
+  const accent = isLead ? '#C6FF00' : PARTNER_PALETTE[idx % PARTNER_PALETTE.length];
+  const tags: string[] = Array.isArray(d.tags) ? d.tags.filter(Boolean) : [];
+  return {
+    id: docId,
+    uid: docId,
+    emailLower,
+    name,
+    initials: name.slice(0, 2).toUpperCase(),
+    isLead,
+    isExample: false,
+    badgeText: isLead ? '대표 강사' : '파트너 강사',
+    accent,
+    role: String(d.title || 'DO-DAHAM 파트너 강사'),
+    bio: String(d.bio || ''),
+    detailBio: String(d.bio || ''),
+    fields: inferFieldsFromTags(tags),
+    tags,
+    credentials: Array.isArray(d.credentials)
+      ? d.credentials
+          .filter((c: unknown) => typeof c === 'string' && c.trim())
+          .map((c: string, i: number) => parseCredentialItem(c, i, isLead))
+      : [],
+    activeDays: Array.isArray(d.activeDays) ? d.activeDays : [],
+    scheduleTime: String(d.scheduleTime || '시간 협의'),
+    activeClassTitle: '개설 수업 준비 중',
+    activeClassStatus: '일정 공지 예정',
+    showStats: Boolean(d.showStats),
+    lectureHours: Number(d.lectureHours || 0),
+    studentCount: Number(d.studentCount || 0),
+    photoUrl: String(d.photoUrl || '')
+  };
+}
+
 export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
   if (approvedMemoryCache && Date.now() - approvedMemoryCache.cachedAt < CACHE_TTL_MS) {
     return approvedMemoryCache.value;
@@ -180,49 +223,28 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
       const snap = await getDocs(
         query(collection(db, 'instructors'), where('status', '==', 'approved'))
       );
-      if (snap.empty) {
-        writeApprovedCache([]);
-        return [];
-      }
+      const loaded: InstructorProfile[] = snap.docs.map((docSnap, idx) =>
+        mapDocToInstructorProfile(docSnap.id, docSnap.data(), idx)
+      );
 
-      const palette = ['#28B8E8', '#F5C400', '#C6FF00'];
-      const loaded: InstructorProfile[] = snap.docs.map((docSnap, idx) => {
-        const d = docSnap.data();
-        const emailLower = String(d.emailLower || '').trim().toLowerCase();
-        const name = String(d.displayName || '파트너 강사');
-        const isLead = isLeadInstructorRecord(emailLower, name);
-        const accent = isLead ? '#C6FF00' : palette[idx % palette.length];
-        const tags: string[] = Array.isArray(d.tags) ? d.tags.filter(Boolean) : [];
-        return {
-          id: docSnap.id,
-          uid: docSnap.id,
-          emailLower,
-          name,
-          initials: name.slice(0, 2).toUpperCase(),
-          isLead,
-          isExample: false,
-          badgeText: isLead ? '대표 강사' : '파트너 강사',
-          accent,
-          role: String(d.title || 'DO-DAHAM 파트너 강사'),
-          bio: String(d.bio || ''),
-          detailBio: String(d.bio || ''),
-          fields: inferFieldsFromTags(tags),
-          tags,
-          credentials: Array.isArray(d.credentials)
-            ? d.credentials
-                .filter((c: unknown) => typeof c === 'string' && c.trim())
-                .map((c: string, i: number) => parseCredentialItem(c, i, isLead))
-            : [],
-          activeDays: Array.isArray(d.activeDays) ? d.activeDays : [],
-          scheduleTime: String(d.scheduleTime || '시간 협의'),
-          activeClassTitle: '개설 수업 준비 중',
-          activeClassStatus: '일정 공지 예정',
-          showStats: Boolean(d.showStats),
-          lectureHours: Number(d.lectureHours || 0),
-          studentCount: Number(d.studentCount || 0),
-          photoUrl: String(d.photoUrl || '')
-        };
-      });
+      // Admin's lead instructor profile fallback + auto-approve if previously saved as draft/pending
+      const activeUser = auth.currentUser;
+      const isSignedInAdmin =
+        activeUser && ADMIN_EMAILS.includes((activeUser.email || '').trim().toLowerCase());
+      if (!loaded.some((inst) => inst.isLead) && isSignedInAdmin && activeUser) {
+        try {
+          const ownSnap = await getDoc(doc(db, 'instructors', activeUser.uid));
+          if (ownSnap.exists()) {
+            const ownData = ownSnap.data();
+            loaded.push(mapDocToInstructorProfile(ownSnap.id, ownData, 0));
+            if (ownData.status !== 'approved') {
+              updateDoc(doc(db, 'instructors', activeUser.uid), { status: 'approved' }).catch(() => {});
+            }
+          }
+        } catch {
+          // Ignore fallback read failure
+        }
+      }
 
       writeApprovedCache(loaded);
       return loaded;

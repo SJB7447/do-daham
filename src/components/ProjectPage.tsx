@@ -1,6 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Check, Copy } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Pencil } from 'lucide-react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { isAuthorizedAdmin } from '../data/defaultActivities';
+import {
+  fetchApprovedInstructors,
+  InstructorProfile,
+  mergeInstructorsWithLead
+} from '../lib/instructorsData';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import {
@@ -39,10 +47,21 @@ const PROCESS_STEPS = [
 export default function ProjectPage() {
   const [kakaoCopied, setKakaoCopied] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [approvedInstructors, setApprovedInstructors] = useState<InstructorProfile[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => auth.currentUser);
 
   useEffect(() => {
     fetchSiteSettings().then(setSiteSettings);
+    fetchApprovedInstructors().then(setApprovedInstructors);
+    const unsub = onAuthStateChanged(auth, setCurrentUser);
+    return () => unsub();
   }, []);
+
+  const leadInstructor = useMemo(
+    () => mergeInstructorsWithLead(undefined, approvedInstructors)[0],
+    [approvedInstructors]
+  );
+  const isAdmin = isAuthorizedAdmin(currentUser?.email);
 
   const handleCopyKakao = async () => {
     try {
@@ -148,43 +167,60 @@ export default function ProjectPage() {
         </div>
 
         <article className="inst-card is-lead !grid grid-cols-1 lg:grid-cols-[260px_1fr]">
-          <div className="inst-card-media !h-[220px] lg:!h-full lg:border-b-0 lg:border-r lg:border-white/[0.08]">
+          <div
+            className={`inst-card-media ${leadInstructor.photoUrl ? 'has-photo' : ''} !h-[240px] lg:!h-full lg:min-h-[260px] lg:border-b-0 lg:border-r lg:border-white/[0.08]`}
+          >
             <span className="inst-badge is-lead">대표 디렉터</span>
-            <div
-              className="inst-avatar-circle overflow-hidden"
-              style={{ borderColor: 'var(--acid)' }}
-            >
-              <CrystalCube size={56} pfx="prjdir" />
-            </div>
-            <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
-              DIRECTOR · 실사 사진 교체 예정
-            </div>
+            {leadInstructor.photoUrl ? (
+              <>
+                <img
+                  src={leadInstructor.photoUrl}
+                  alt={leadInstructor.name}
+                  className="inst-card-photo"
+                />
+                <span className="inst-card-photo-caption">DIRECTOR · LEAD INSTRUCTOR</span>
+              </>
+            ) : (
+              <>
+                <div
+                  className="inst-avatar-circle overflow-hidden"
+                  style={{ borderColor: 'var(--acid)' }}
+                >
+                  <CrystalCube size={56} pfx="prjdir" />
+                </div>
+                <div className="text-[10px] font-bold tracking-[0.14em] text-[#A3A79F] mt-3 uppercase">
+                  DIRECTOR · 대표 디렉터
+                </div>
+              </>
+            )}
           </div>
 
           <div className="inst-card-body justify-between">
             <div>
               <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
                 <div>
-                  <h3 className="font-bold text-2xl tracking-tight leading-tight">심정보</h3>
+                  <h3 className="font-bold text-2xl tracking-tight leading-tight">
+                    {leadInstructor.name}
+                  </h3>
                   <p className="text-xs font-semibold text-[#A3A79F] mt-1">
-                    DO-DAHAM 대표 · AI 크리에이터 · 웹 빌더
+                    {leadInstructor.role}
                   </p>
                 </div>
               </div>
 
+              {leadInstructor.bio && (
+                <p className="text-[14.5px] font-medium leading-[1.75] text-[#F2F2F2]/90 mb-4 break-keep">
+                  {leadInstructor.bio}
+                </p>
+              )}
+
               <div className="instructor-cred-list !my-4">
-                <div className="instructor-cred-row">
-                  <span className="instructor-cred-label">AWARD</span>
-                  <span className="font-medium">경기관광공사 영상 공모전 입상</span>
-                </div>
-                <div className="instructor-cred-row">
-                  <span className="instructor-cred-label">MAIN</span>
-                  <span className="font-medium">AI 디지털 튜터 양성 과정 메인 강사</span>
-                </div>
-                <div className="instructor-cred-row">
-                  <span className="instructor-cred-label">TEACHING</span>
-                  <span className="font-medium">AI 디지털 배움터 · 에이블런 출강</span>
-                </div>
+                {leadInstructor.credentials.map((cred) => (
+                  <div key={`${cred.label}-${cred.text}`} className="instructor-cred-row">
+                    <span className="instructor-cred-label">{cred.label}</span>
+                    <span className="font-medium">{cred.text}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -192,9 +228,19 @@ export default function ProjectPage() {
               <Link to="/activity" className="hero-cta-secondary">
                 현장 · 보도 기록 보기 →
               </Link>
+              {isAdmin && (
+                <Link
+                  to="/instructor/profile"
+                  className="hero-cta-secondary"
+                  style={{ borderColor: 'var(--acid)', color: 'var(--acid)' }}
+                >
+                  <Pencil size={13} /> 내 프로필 수정 →
+                </Link>
+              )}
               <Link
                 to="/class/instructors"
-                className="text-xs font-bold text-[#C6FF00] hover:underline px-2 py-2"
+                className="text-xs font-bold hover:underline px-2 py-2"
+                style={{ color: 'var(--acid)' }}
               >
                 강사진 전체 프로필 →
               </Link>
