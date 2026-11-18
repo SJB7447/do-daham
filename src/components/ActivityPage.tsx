@@ -5,7 +5,8 @@ import {
   Trash2, Image as ImageIcon, Newspaper, ShieldCheck, RefreshCw, Loader2, Quote, Sparkles
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import { auth, storage } from '../lib/firebase';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import { ActivityItem, ActivityCategory } from '../types/activity';
@@ -19,6 +20,19 @@ import {
   isAuthorizedAdmin,
   ADMIN_EMAILS
 } from '../data/defaultActivities';
+
+async function uploadActivityDataUrl(src: string, index: number): Promise<string> {
+  const trimmed = src.trim();
+  if (!trimmed || !trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  const extMatch = trimmed.match(/^data:image\/([a-zA-Z0-9+.-]+);/);
+  const ext = extMatch?.[1]?.replace('jpeg', 'jpg') || 'jpg';
+  const uid = auth.currentUser?.uid || 'admin';
+  const fileRef = ref(storage, `activities/${uid}_${Date.now()}_${index}.${ext}`);
+  await uploadString(fileRef, trimmed, 'data_url');
+  return getDownloadURL(fileRef);
+}
 
 export default function ActivityPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -178,30 +192,35 @@ export default function ActivityPage() {
     setIsSubmitting(true);
     setFormError('');
 
-    const primaryImg = formData.imageUrl || (uploadedPhotos[0] ? uploadedPhotos[0].processed : '');
-    const extraImgs = uploadedPhotos.length > 1
+    const rawPrimaryImg = formData.imageUrl || (uploadedPhotos[0] ? uploadedPhotos[0].processed : '');
+    const rawExtraImgs = uploadedPhotos.length > 1
       ? uploadedPhotos.slice(1).map(p => p.processed)
-      : (formData.additionalImages && formData.additionalImages.length > 0 ? formData.additionalImages : undefined);
-
-    const newActivity: ActivityItem = {
-      id: `act-custom-${Date.now()}`,
-      category: formData.category,
-      title: formData.title.trim(),
-      organization: formData.organization.trim(),
-      date: formData.date.trim() || new Date().toISOString().slice(0, 7).replace('-', '.'),
-      imageUrl: primaryImg,
-      additionalImages: extraImgs,
-      link: formData.link.trim() || undefined,
-      description: formData.description.trim(),
-      tags: formData.tags
-        ? formData.tags.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean)
-        : [],
-      createdAt: Date.now()
-    };
-
-    const updated = [newActivity, ...activities];
+      : (formData.additionalImages && formData.additionalImages.length > 0 ? formData.additionalImages : []);
 
     try {
+      const [primaryImg, uploadedExtras] = await Promise.all([
+        uploadActivityDataUrl(rawPrimaryImg, 0),
+        Promise.all(rawExtraImgs.map((imgSrc, idx) => uploadActivityDataUrl(imgSrc, idx + 1)))
+      ]);
+      const extraImgs = uploadedExtras.length > 0 ? uploadedExtras : undefined;
+
+      const newActivity: ActivityItem = {
+        id: `act-custom-${Date.now()}`,
+        category: formData.category,
+        title: formData.title.trim(),
+        organization: formData.organization.trim(),
+        date: formData.date.trim() || new Date().toISOString().slice(0, 7).replace('-', '.'),
+        imageUrl: primaryImg,
+        additionalImages: extraImgs,
+        link: formData.link.trim() || undefined,
+        description: formData.description.trim(),
+        tags: formData.tags
+          ? formData.tags.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+          : [],
+        createdAt: Date.now()
+      };
+
+      const updated = [newActivity, ...activities];
       await saveActivitiesToCloud(updated, currentUser?.email);
       setActivities(updated);
       setIsAddModalOpen(false);

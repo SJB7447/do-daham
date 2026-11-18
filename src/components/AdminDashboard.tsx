@@ -21,6 +21,7 @@ import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../l
 import { clearSiteSettingsCache, DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
 import { clearClassMetricsCache } from '../lib/classMetrics';
 import { clearApprovedInstructorsCache } from '../lib/instructorsData';
+import { isAuthorizedAdmin as isAuthorizedAdminEmail } from '../data/defaultActivities';
 import { fetchFormSubmissions } from '../lib/formSubmissions';
 import AdminSubmissionsPanel from './AdminSubmissionsPanel';
 import { LetterLimitTextarea } from './LetterLimitTextarea';
@@ -157,15 +158,8 @@ function generateCryptoToken(): string {
     .join('');
 }
 
-const ADMIN_ALLOWED_EMAILS: string[] = (import.meta.env.VITE_ADMIN_EMAILS || '')
-  .split(',')
-  .map((e: string) => e.trim().toLowerCase())
-  .filter(Boolean);
-
 function isAuthorizedAdmin(currentUser: User | null): boolean {
-  if (!currentUser || !currentUser.email) return false;
-  if (ADMIN_ALLOWED_EMAILS.length === 0) return true;
-  return Boolean(currentUser.emailVerified) && ADMIN_ALLOWED_EMAILS.includes(currentUser.email.toLowerCase());
+  return Boolean(currentUser?.email && isAuthorizedAdminEmail(currentUser.email));
 }
 
 export default function AdminDashboard() {
@@ -441,6 +435,8 @@ export default function AdminDashboard() {
           enrolledCount: item.enrolledCount,
           hoursPerSession: item.hoursPerSession
         });
+        clearClassMetricsCache();
+        clearApprovedInstructorsCache();
         setClassNotice(`[${item.title}] 상태가 '${nextStatus}'로 변경되었습니다.`);
       } catch (err) {
         console.warn('Class status update failed:', err);
@@ -455,6 +451,8 @@ export default function AdminDashboard() {
     if (!item.isSample) {
       try {
         await deleteDoc(doc(db, 'classes', item.id));
+        clearClassMetricsCache();
+        clearApprovedInstructorsCache();
         setClassNotice(`[${item.title}] 수업이 삭제되었습니다.`);
       } catch (err) {
         console.warn('Class delete failed:', err);
@@ -478,6 +476,8 @@ export default function AdminDashboard() {
           status: 'started',
           startedAt: serverTimestamp()
         });
+        clearClassMetricsCache();
+        clearApprovedInstructorsCache();
         setClassNotice(
           `[${item.title}] 수업이 시작 처리되어 +${item.enrolledCount}명 · +${item.sessionCount * item.hoursPerSession}시간이 메인/클래스 누적 실적에 반영되었습니다.`
         );
@@ -503,19 +503,19 @@ export default function AdminDashboard() {
         
         // Match default schema structure and guarantee unique project IDs
         setPortfolioData({
-          userName: parsed.userName || '성진배',
-          userRole: parsed.userRole || 'AI Creator & Vibe Coder',
+          userName: parsed.userName || 'DO-DAHAM',
+          userRole: parsed.userRole || 'CREATIVE REBELS',
           manifesto: {
             lines: Array.isArray(parsed.manifesto?.lines) && parsed.manifesto.lines.length > 0
               ? parsed.manifesto.lines
-              : ['질문을 던지고,', '코드를 엮어,', '새로운 가치를 만듭니다.', '상상을 현실로 구현하는 바이브 코더.'],
-            highlight: parsed.manifesto?.highlight || '상상을 현실로 구현하는 바이브 코더.'
+              : ['눈치 보지 마.', '허락 구하지 마.', '그냥 해.'],
+            highlight: parsed.manifesto?.highlight || '하고싶은거 다해.'
           },
           masterpiece: {
-            title: parsed.masterpiece?.title || 'AI Media Art - The Wave',
-            descriptionTitle: parsed.masterpiece?.descriptionTitle || '생성형 AI와 사운드의 결합으로 탄생한 감각적 비주얼 필름',
+            title: parsed.masterpiece?.title || 'REPRESENTATIVE WORK',
+            descriptionTitle: parsed.masterpiece?.descriptionTitle || 'SELECTED WORK',
             descriptionSub: parsed.masterpiece?.descriptionSub || '',
-            embedSrc: parsed.masterpiece?.embedSrc || 'https://www.youtube.com/embed/P-b7WV-obKs'
+            embedSrc: parsed.masterpiece?.embedSrc || ''
           },
           actions: normalizeActions(parsed.actions),
           activities: Array.isArray(parsed.activities) ? parsed.activities : [],
@@ -523,17 +523,17 @@ export default function AdminDashboard() {
         });
       } else {
         setPortfolioData({
-          userName: '성진배',
-          userRole: 'AI Creator & Vibe Coder',
+          userName: 'DO-DAHAM',
+          userRole: 'CREATIVE REBELS',
           manifesto: {
-            lines: ['질문을 던지고,', '코드를 엮어,', '새로운 가치를 만듭니다.', '상상을 현실로 구현하는 바이브 코더.'],
-            highlight: '상상을 현실로 구현하는 바이브 코더.'
+            lines: ['눈치 보지 마.', '허락 구하지 마.', '그냥 해.'],
+            highlight: '하고싶은거 다해.'
           },
           masterpiece: {
-            title: 'AI Media Art - The Wave',
-            descriptionTitle: '생성형 AI와 사운드의 결합으로 탄생한 감각적 비주얼 필름',
+            title: 'REPRESENTATIVE WORK',
+            descriptionTitle: 'SELECTED WORK',
             descriptionSub: '',
-            embedSrc: 'https://www.youtube.com/embed/P-b7WV-obKs'
+            embedSrc: ''
           },
           actions: normalizeActions(DEFAULT_ACTIONS),
           activities: [],

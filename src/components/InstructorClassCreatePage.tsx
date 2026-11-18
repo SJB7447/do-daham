@@ -5,6 +5,7 @@ import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/fires
 import { Calendar, CheckCircle2, Clock, MapPin, Save, Sparkles, Users } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
+import { clearApprovedInstructorsCache } from '../lib/instructorsData';
 import { SiteHeader } from './SiteHeader';
 import { InstructorQuickTabs } from './InstructorQuickTabs';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
@@ -33,6 +34,7 @@ export default function InstructorClassCreatePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthorizedInstructor, setIsAuthorizedInstructor] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -64,15 +66,17 @@ export default function InstructorClassCreatePage() {
       setUser(currentUser);
       if (!currentUser) {
         setIsAuthorizedInstructor(false);
+        setIsAdminUser(false);
         setAuthLoading(false);
         return;
       }
-      const isAdminUser = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      const adminFlag = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      setIsAdminUser(adminFlag);
       try {
         const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
-        setIsAuthorizedInstructor(isAdminUser || snap.exists());
+        setIsAuthorizedInstructor(adminFlag || snap.exists());
       } catch {
-        setIsAuthorizedInstructor(isAdminUser);
+        setIsAuthorizedInstructor(adminFlag);
       } finally {
         setAuthLoading(false);
       }
@@ -122,7 +126,7 @@ export default function InstructorClassCreatePage() {
     }
 
     setSaving(true);
-    const status = submitForApproval ? 'pending' : 'draft';
+    const status = submitForApproval ? (isAdminUser ? 'published' : 'pending') : 'draft';
     try {
       await addDoc(collection(db, 'classes'), {
         instructorUid: user.uid,
@@ -145,9 +149,12 @@ export default function InstructorClassCreatePage() {
         status,
         createdAt: serverTimestamp()
       });
+      clearApprovedInstructorsCache();
       setNotice(
         submitForApproval
-          ? '수업이 등록되어 운영자 승인 요청 상태로 저장되었습니다.'
+          ? isAdminUser
+            ? '수업이 등록되어 수업 일정표(/class/schedule)에 즉시 공개되었습니다.'
+            : '수업이 등록되어 운영자 승인 요청 상태로 저장되었습니다.'
           : '수업 초안이 저장되었습니다.'
       );
     } catch (err: any) {
@@ -528,7 +535,12 @@ export default function InstructorClassCreatePage() {
                         onClick={() => handleSaveClass(true)}
                         className="hero-cta flex-1 justify-center"
                       >
-                        <Save size={15} /> {saving ? '저장 중...' : '저장 후 승인 요청 →'}
+                        <Save size={15} />{' '}
+                        {saving
+                          ? '저장 중...'
+                          : isAdminUser
+                            ? '저장 및 일정표 즉시 공개 →'
+                            : '저장 후 승인 요청 →'}
                       </button>
                       <button
                         type="button"
@@ -551,7 +563,7 @@ export default function InstructorClassCreatePage() {
                 <div className="bg-gradient-to-br from-[#13130C] to-[#0B0B0B] border border-[#C6FF00]/45 rounded-[2px] p-6 space-y-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1 rounded-[2px] border border-[#F5C400] text-[#F5C400]">
-                      승인 요청 예정
+                      {isAdminUser ? '즉시 공개 (대표 강사)' : '승인 요청 예정'}
                     </span>
                     <span className="text-xs font-bold text-[#8C8C8C]">
                       {category} · {sessionCount}회

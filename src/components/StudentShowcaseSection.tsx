@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -13,6 +14,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ExternalLink, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
+import { isAuthorizedAdmin } from '../data/defaultActivities';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 export interface StudentWorkItem {
@@ -66,6 +68,8 @@ const SAMPLE_STUDENT_WORKS: StudentWorkItem[] = [
 
 export default function StudentShowcaseSection() {
   const [user, setUser] = useState<User | null>(null);
+  const [canUploadWork, setCanUploadWork] = useState(false);
+  const [instructorDisplayName, setInstructorDisplayName] = useState('');
   const [works, setWorks] = useState<StudentWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -82,8 +86,31 @@ export default function StudentShowcaseSection() {
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (!currentUser) {
+        setCanUploadWork(false);
+        setInstructorDisplayName('');
+        return;
+      }
+
+      const adminFlag = isAuthorizedAdmin(currentUser.email);
+      try {
+        const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
+        setCanUploadWork(adminFlag || snap.exists());
+        setInstructorDisplayName(
+          String(
+            snap.data()?.displayName ||
+              currentUser.displayName ||
+              (adminFlag ? '심정보' : '강사')
+          )
+        );
+      } catch {
+        setCanUploadWork(adminFlag);
+        setInstructorDisplayName(
+          String(currentUser.displayName || (adminFlag ? '심정보' : '강사'))
+        );
+      }
     });
     return () => unsub();
   }, []);
@@ -142,18 +169,19 @@ export default function StudentShowcaseSection() {
 
   const handleCreateWork = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !canUploadWork) return;
     if (!title.trim() || !description.trim()) {
       setErrorMsg('결과물 제목과 설명을 입력해 주세요.');
       return;
     }
 
+    const resolvedAuthorName = instructorDisplayName || user.displayName || '강사';
     setErrorMsg('');
     setSubmitting(true);
     try {
       const docRef = await addDoc(collection(db, 'student_works'), {
         authorUid: user.uid,
-        authorName: user.displayName || '강사',
+        authorName: resolvedAuthorName,
         title: title.trim(),
         category,
         studentLabel: studentLabel.trim() || '수료생 완성작',
@@ -166,7 +194,7 @@ export default function StudentShowcaseSection() {
       const created: StudentWorkItem = {
         id: docRef.id,
         authorUid: user.uid,
-        authorName: user.displayName || user.email || '강사',
+        authorName: resolvedAuthorName,
         title: title.trim(),
         category,
         studentLabel: studentLabel.trim() || '수료생 완성작',
@@ -212,8 +240,8 @@ export default function StudentShowcaseSection() {
           </p>
         </div>
 
-        {/* Upload Button: Visible ONLY to logged-in instructors / admin */}
-        {user && (
+        {/* Upload Button: Visible ONLY to registered instructors / admin */}
+        {user && canUploadWork && (
           <button
             type="button"
             onClick={() => setModalOpen(true)}
@@ -235,7 +263,7 @@ export default function StudentShowcaseSection() {
           <p className="text-xs text-[#8C8C8C] mb-5">
             실제 수업 수료 후 수강생이 제작한 AI 영상·웹사이트·업무 자동화 결과물이 순차적으로 등록됩니다.
           </p>
-          {user && (
+          {user && canUploadWork && (
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -299,7 +327,7 @@ export default function StudentShowcaseSection() {
                         결과물 보기 <ExternalLink size={12} />
                       </a>
                     )}
-                    {user && !item.isExample && user.uid === item.authorUid && (
+                    {user && !item.isExample && (user.uid === item.authorUid || isAuthorizedAdmin(user.email)) && (
                       <button
                         type="button"
                         onClick={() => handleDeleteWork(item)}
@@ -317,8 +345,8 @@ export default function StudentShowcaseSection() {
         </div>
       )}
 
-      {/* Upload Modal (Logged-in users only) */}
-      {modalOpen && user && (
+      {/* Upload Modal (Registered instructors / admin only) */}
+      {modalOpen && user && canUploadWork && (
         <div
           className="fixed inset-0 z-[320] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setModalOpen(false)}

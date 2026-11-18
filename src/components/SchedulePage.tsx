@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Clock, ExternalLink, MapPin, Users } from 'lucide-react';
 import { db } from '../lib/firebase';
+import { ADMIN_EMAILS } from '../data/defaultActivities';
+import {
+  fetchApprovedInstructors,
+  mergeInstructorsWithLead,
+  toThemeAccent
+} from '../lib/instructorsData';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import {
@@ -13,6 +19,12 @@ import {
 } from '../lib/siteSettings';
 
 type ClassStatus = 'confirmed' | 'urgent' | 'pending';
+
+interface SessionDatePoint {
+  year: number;
+  monthIndex: number;
+  day: number;
+}
 
 interface ScheduleClassItem {
   id: string;
@@ -33,13 +45,59 @@ interface ScheduleClassItem {
   basePrice: number;
   currentPrice: number;
   nextDropHint: string;
-  calendarDates: number[];
+  sessionDates: SessionDatePoint[];
   isExample: boolean;
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
-// 2026년 12월 기준 달력 셀 생성 (12월 1일 = 화요일, 31일)
+function parseClassSessionDates(
+  sessions: unknown,
+  startDate: unknown,
+  sessionCount: number
+): SessionDatePoint[] {
+  const parsed: SessionDatePoint[] = [];
+  if (Array.isArray(sessions)) {
+    sessions.forEach((raw) => {
+      const m = String(raw || '').match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+      if (m) {
+        parsed.push({
+          year: Number(m[1]),
+          monthIndex: Number(m[2]) - 1,
+          day: Number(m[3])
+        });
+      }
+    });
+  }
+  if (parsed.length > 0) return parsed;
+
+  const startMatch = String(startDate || '').match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (startMatch) {
+    const base = new Date(Number(startMatch[1]), Number(startMatch[2]) - 1, Number(startMatch[3]));
+    if (!Number.isNaN(base.getTime())) {
+      const count = Math.max(1, Math.min(24, sessionCount || 6));
+      for (let i = 0; i < count; i += 1) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i * 7);
+        parsed.push({
+          year: d.getFullYear(),
+          monthIndex: d.getMonth(),
+          day: d.getDate()
+        });
+      }
+    }
+  }
+  return parsed;
+}
+
+function formatWeekdayFromStartDate(startDate: unknown): string {
+  const m = String(startDate || '').match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (!m) return '일정 협의';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(d.getTime())) return '일정 협의';
+  return `매주 ${WEEKDAYS_KO[d.getDay()]}요일`;
+}
+
 function buildMonthCells(year: number, monthIndex: number) {
   const firstDay = new Date(year, monthIndex, 1).getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -53,8 +111,11 @@ function buildMonthCells(year: number, monthIndex: number) {
 export default function SchedulePage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | ClassStatus>('ALL');
   const [instructorFilter, setInstructorFilter] = useState<string>('ALL');
-  const [selectedDay, setSelectedDay] = useState<number | null>(1);
-  const [monthOffset, setMonthOffset] = useState<0 | 1>(0); // 0: 2026.12, 1: 2027.01
+  const [viewMonth, setViewMonth] = useState<{ year: number; monthIndex: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), monthIndex: now.getMonth() };
+  });
+  const [selectedDay, setSelectedDay] = useState<number | null>(() => new Date().getDate());
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [scheduleClasses, setScheduleClasses] = useState<ScheduleClassItem[]>([]);
 
@@ -63,20 +124,27 @@ export default function SchedulePage() {
 
     async function loadPublishedClasses() {
       try {
-        const q = query(
-          collection(db, 'classes'),
-          where('status', 'in', ['published', 'confirmed', 'started', 'closed'])
-        );
-        const snap = await getDocs(q);
-        const list: ScheduleClassItem[] = snap.docs.map((docSnap) => {
+        const [clsSnap, approved] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, 'classes'),
+              where('status', 'in', ['published', 'confirmed', 'started', 'closed'])
+            )
+          ),
+          fetchApprovedInstructors()
+        ]);
+
+        const allInstructors = mergeInstructorsWithLead(undefined, approved);
+        const list: ScheduleClassItem[] = clsSnap.docs.map((docSnap) => {
           const d = docSnap.data();
           const enrolled = Number(d.enrolledCount || 0);
           const minToOpen = Number(d.minToOpen || 1);
           const capacity = Number(d.capacity || 15);
           const basePrice = Number(d.basePrice || 25000);
+          const sessionCount = Number(d.sessionCount || 6);
           const remaining = Math.max(0, capacity - enrolled);
           const mappedStatus: ClassStatus =
-            enrolled >= minToOpen
+            d.status === 'confirmed' || d.status === 'started' || enrolled >= minToOpen
               ? remaining <= 3
                 ? 'urgent'
                 : 'confirmed'
@@ -88,16 +156,36 @@ export default function SchedulePage() {
                 ? '마감 임박'
                 : '개설 대기';
 
+          const clsUid = String(d.instructorUid || '').trim();
+          const clsEmail = String(d.instructorEmail || '').trim().toLowerCase();
+          const matchedInstructor = allInstructors.find(
+            (inst) =>
+              (clsUid && inst.uid && inst.uid === clsUid) ||
+              (clsEmail && inst.emailLower && inst.emailLower === clsEmail) ||
+              (inst.isLead && clsEmail !== '' && ADMIN_EMAILS.includes(clsEmail))
+          );
+
+          const instructorName = matchedInstructor
+            ? matchedInstructor.name
+            : String(d.instructorName || 'DO-DAHAM 강사');
+          const instructorInitials = matchedInstructor
+            ? matchedInstructor.initials
+            : instructorName.slice(0, 2).toUpperCase();
+          const instructorAccent = matchedInstructor
+            ? toThemeAccent(matchedInstructor.accent)
+            : 'var(--acid)';
+          const sessionDates = parseClassSessionDates(d.sessions, d.startDate, sessionCount);
+
           return {
             id: docSnap.id,
             title: String(d.title || 'AI 실무 클래스'),
-            cohort: `${d.category || '클래스'} · ${d.sessionCount || 6}회`,
+            cohort: `${d.category || '클래스'} · ${sessionCount}회`,
             status: mappedStatus,
             statusLabel,
-            instructorName: String(d.instructorName || 'DO-DAHAM 강사'),
-            instructorInitials: String(d.instructorName || 'AI').slice(0, 2).toUpperCase(),
-            instructorAccent: 'var(--acid)',
-            weekdayLabel: String(d.startDate || '일정 협의'),
+            instructorName,
+            instructorInitials,
+            instructorAccent,
+            weekdayLabel: formatWeekdayFromStartDate(d.startDate),
             timeLabel: `${d.startTime || '19:30'} – ${d.endTime || '21:30'}`,
             startDateLabel: String(d.startDate || '확정 시 안내'),
             location: String(d.location || '확정 시 안내'),
@@ -107,11 +195,23 @@ export default function SchedulePage() {
             basePrice,
             currentPrice: basePrice,
             nextDropHint: `정원 ${capacity}명 · 잔여 ${remaining}석`,
-            calendarDates: [],
+            sessionDates,
             isExample: false
           };
         });
         setScheduleClasses(list);
+
+        const now = new Date();
+        const hasCurrentMonthSession = list.some((c) =>
+          c.sessionDates.some(
+            (pt) => pt.year === now.getFullYear() && pt.monthIndex === now.getMonth()
+          )
+        );
+        const firstSession = list.find((c) => c.sessionDates.length > 0)?.sessionDates[0];
+        if (!hasCurrentMonthSession && firstSession) {
+          setViewMonth({ year: firstSession.year, monthIndex: firstSession.monthIndex });
+          setSelectedDay(firstSession.day);
+        }
       } catch {
         setScheduleClasses([]);
       }
@@ -123,9 +223,17 @@ export default function SchedulePage() {
   const canApply = Boolean(siteSettings.classApplicationOpen);
   const activeApplyTarget = siteSettings.classApplicationFormUrl || '/apply/class-apply';
 
-  const currentYear = monthOffset === 0 ? 2026 : 2027;
-  const currentMonthIndex = monthOffset === 0 ? 11 : 0; // 11 = Dec, 0 = Jan
-  const monthLabel = monthOffset === 0 ? '2026년 12월' : '2027년 1월';
+  const currentYear = viewMonth.year;
+  const currentMonthIndex = viewMonth.monthIndex;
+  const monthLabel = `${currentYear}년 ${currentMonthIndex + 1}월`;
+
+  const shiftMonth = (delta: -1 | 1) => {
+    setViewMonth((prev) => {
+      const next = new Date(prev.year, prev.monthIndex + delta, 1);
+      return { year: next.getFullYear(), monthIndex: next.getMonth() };
+    });
+    setSelectedDay(1);
+  };
 
   const monthCells = useMemo(
     () => buildMonthCells(currentYear, currentMonthIndex),
@@ -147,16 +255,17 @@ export default function SchedulePage() {
 
   const eventsByDay = useMemo(() => {
     const map = new Map<number, ScheduleClassItem[]>();
-    if (monthOffset !== 0) return map;
     filteredClasses.forEach((cls) => {
-      cls.calendarDates.forEach((d) => {
-        const list = map.get(d) || [];
-        list.push(cls);
-        map.set(d, list);
+      cls.sessionDates.forEach((pt) => {
+        if (pt.year === currentYear && pt.monthIndex === currentMonthIndex) {
+          const list = map.get(pt.day) || [];
+          list.push(cls);
+          map.set(pt.day, list);
+        }
       });
     });
     return map;
-  }, [filteredClasses, monthOffset]);
+  }, [filteredClasses, currentYear, currentMonthIndex]);
 
   const mobileWeeklyList = useMemo(() => {
     const entries = Array.from(eventsByDay.entries()).sort((a, b) => a[0] - b[0]);
@@ -166,7 +275,14 @@ export default function SchedulePage() {
   const selectedDayEvents = selectedDay ? eventsByDay.get(selectedDay) || [] : [];
 
   const confirmedCount = scheduleClasses.filter((c) => c.status === 'confirmed').length;
-  const totalSessionsThisMonth = scheduleClasses.reduce((acc, c) => acc + c.calendarDates.length, 0);
+  const totalSessionsThisMonth = scheduleClasses.reduce(
+    (acc, c) =>
+      acc +
+      c.sessionDates.filter(
+        (pt) => pt.year === currentYear && pt.monthIndex === currentMonthIndex
+      ).length,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
@@ -307,19 +423,17 @@ export default function SchedulePage() {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setMonthOffset(0)}
-                  disabled={monthOffset === 0}
+                  onClick={() => shiftMonth(-1)}
                   aria-label="이전 달"
-                  className="w-11 h-11 flex items-center justify-center border border-white/[0.16] rounded-[2px] text-[#F2F2F2] disabled:opacity-30 hover:border-[#C6FF00] cursor-pointer"
+                  className="w-11 h-11 flex items-center justify-center border border-white/[0.16] rounded-[2px] text-[#F2F2F2] hover:border-[#C6FF00] cursor-pointer"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMonthOffset(1)}
-                  disabled={monthOffset === 1}
+                  onClick={() => shiftMonth(1)}
                   aria-label="다음 달"
-                  className="w-11 h-11 flex items-center justify-center border border-white/[0.16] rounded-[2px] text-[#F2F2F2] disabled:opacity-30 hover:border-[#C6FF00] cursor-pointer"
+                  className="w-11 h-11 flex items-center justify-center border border-white/[0.16] rounded-[2px] text-[#F2F2F2] hover:border-[#C6FF00] cursor-pointer"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -378,7 +492,7 @@ export default function SchedulePage() {
                 <div className="text-[10px] font-extrabold tracking-[0.14em] text-[#8C8C8C] mb-2">
                   {selectedDay ? `${currentMonthIndex + 1}월 ${selectedDay}일 일정` : '날짜를 선택하세요'}
                 </div>
-                {monthOffset === 1 || selectedDayEvents.length === 0 ? (
+                {selectedDayEvents.length === 0 ? (
                   <p className="text-xs text-[#8C8C8C]">선택한 날짜에 예정된 수업이 없습니다.</p>
                 ) : (
                   <div className="space-y-2">
@@ -407,7 +521,7 @@ export default function SchedulePage() {
 
             {/* Mobile Weekly List Alternative (visible on <= 600px) */}
             <div className="sm:hidden space-y-2.5">
-              {monthOffset === 1 || mobileWeeklyList.length === 0 ? (
+              {mobileWeeklyList.length === 0 ? (
                 <p className="text-sm text-[#8C8C8C] py-4">
                   이 달에는 아직 공개된 수업 일정이 없습니다.
                 </p>
@@ -420,7 +534,7 @@ export default function SchedulePage() {
                       className="p-3.5 bg-black/50 border border-white/[0.08] rounded-[2px]"
                     >
                       <div className="text-xs font-extrabold text-[#C6FF00] mb-2">
-                        12월 {day}일 ({weekday})
+                        {currentMonthIndex + 1}월 {day}일 ({weekday})
                       </div>
                       <div className="space-y-2">
                         {items.map((ev) => (

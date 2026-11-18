@@ -117,9 +117,19 @@ function inferFieldsFromTags(tags: string[]): Exclude<FieldFilter, 'ALL'>[] {
 }
 
 const CACHE_TTL_MS = 60_000;
-const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v2';
+const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v3';
 
-let approvedMemoryCache: { value: InstructorProfile[]; cachedAt: number } | null = null;
+interface ActiveClassSummary {
+  activeClassTitle: string;
+  activeClassStatus: string;
+  activeClassTo: string;
+}
+
+let approvedMemoryCache: {
+  value: InstructorProfile[];
+  leadClassSummary: ActiveClassSummary | null;
+  cachedAt: number;
+} | null = null;
 let inflightApproved: Promise<InstructorProfile[]> | null = null;
 
 export function clearApprovedInstructorsCache() {
@@ -132,17 +142,27 @@ export function clearApprovedInstructorsCache() {
   }
 }
 
-function readStoredApprovedCache(): InstructorProfile[] | null {
+function readStoredApprovedCache(): {
+  value: InstructorProfile[];
+  leadClassSummary: ActiveClassSummary | null;
+} | null {
   try {
     const raw = sessionStorage.getItem(APPROVED_INSTRUCTORS_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { value?: InstructorProfile[]; cachedAt?: number };
+    const parsed = JSON.parse(raw) as {
+      value?: InstructorProfile[];
+      leadClassSummary?: ActiveClassSummary | null;
+      cachedAt?: number;
+    };
     if (
       Array.isArray(parsed?.value) &&
       typeof parsed.cachedAt === 'number' &&
       Date.now() - parsed.cachedAt < CACHE_TTL_MS
     ) {
-      return parsed.value;
+      return {
+        value: parsed.value,
+        leadClassSummary: parsed.leadClassSummary || null
+      };
     }
   } catch {
     // Ignore storage errors
@@ -150,14 +170,55 @@ function readStoredApprovedCache(): InstructorProfile[] | null {
   return null;
 }
 
-function writeApprovedCache(value: InstructorProfile[]) {
+function writeApprovedCache(
+  value: InstructorProfile[],
+  leadClassSummary: ActiveClassSummary | null
+) {
   const cachedAt = Date.now();
-  approvedMemoryCache = { value, cachedAt };
+  approvedMemoryCache = { value, leadClassSummary, cachedAt };
   try {
-    sessionStorage.setItem(APPROVED_INSTRUCTORS_CACHE_KEY, JSON.stringify({ value, cachedAt }));
+    sessionStorage.setItem(
+      APPROVED_INSTRUCTORS_CACHE_KEY,
+      JSON.stringify({ value, leadClassSummary, cachedAt })
+    );
   } catch {
     // Ignore quota errors
   }
+}
+
+function buildClassSummary(cls: Record<string, any>): ActiveClassSummary {
+  const enrolled = Number(cls.enrolledCount || 0);
+  const minToOpen = Number(cls.minToOpen || 1);
+  const capacity = Number(cls.capacity || 15);
+  const isConfirmed =
+    cls.status === 'confirmed' || cls.status === 'started' || enrolled >= minToOpen;
+  return {
+    activeClassTitle: `${String(cls.title || 'AI 실무 클래스')} (${Number(cls.sessionCount || 6)}회)`,
+    activeClassStatus: isConfirmed
+      ? `개설 확정 · 정원 ${capacity}명`
+      : `모집 중 · 최소 ${minToOpen}명 개설 (정원 ${capacity}명)`,
+    activeClassTo: '/class/schedule'
+  };
+}
+
+function applyActiveClassToProfile(
+  profile: InstructorProfile,
+  activeClasses: Array<Record<string, any>>
+): InstructorProfile {
+  const matched = activeClasses.find((cls) => {
+    const clsUid = String(cls.instructorUid || '').trim();
+    const clsEmail = String(cls.instructorEmail || '').trim().toLowerCase();
+    return (
+      (clsUid && profile.uid && clsUid === profile.uid) ||
+      (clsEmail && profile.emailLower && clsEmail === profile.emailLower) ||
+      (profile.isLead && clsEmail !== '' && ADMIN_EMAILS.includes(clsEmail))
+    );
+  });
+  if (!matched) return profile;
+  return {
+    ...profile,
+    ...buildClassSummary(matched)
+  };
 }
 
 const PARTNER_PALETTE = ['#28B8E8', '#F5C400', '#C6FF00'];
@@ -210,8 +271,12 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
 
   const stored = readStoredApprovedCache();
   if (stored) {
-    approvedMemoryCache = { value: stored, cachedAt: Date.now() };
-    return stored;
+    approvedMemoryCache = {
+      value: stored.value,
+      leadClassSummary: stored.leadClassSummary,
+      cachedAt: Date.now()
+    };
+    return stored.value;
   }
 
   if (inflightApproved) {
@@ -220,12 +285,24 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
 
   inflightApproved = (async () => {
     try {
-      const snap = await getDocs(
-        query(collection(db, 'instructors'), where('status', '==', 'approved'))
-      );
-      const loaded: InstructorProfile[] = snap.docs.map((docSnap, idx) =>
-        mapDocToInstructorProfile(docSnap.id, docSnap.data(), idx)
-      );
+      const [instResult, clsResult] = await Promise.allSettled([
+        getDocs(query(collection(db, 'instructors'), where('status', '==', 'approved'))),
+        getDocs(
+          query(collection(db, 'classes'), where('status', 'in', ['published', 'confirmed', 'started']))
+        )
+      ]);
+
+      const activeClasses: Array<Record<string, any>> =
+        clsResult.status === 'fulfilled'
+          ? clsResult.value.docs.map((d) => ({ id: d.id, ...d.data() }))
+          : [];
+
+      const loaded: InstructorProfile[] =
+        instResult.status === 'fulfilled'
+          ? instResult.value.docs.map((docSnap, idx) =>
+              mapDocToInstructorProfile(docSnap.id, docSnap.data(), idx)
+            )
+          : [];
 
       // Admin's lead instructor profile fallback + auto-approve if previously saved as draft/pending
       const activeUser = auth.currentUser;
@@ -246,8 +323,14 @@ export async function fetchApprovedInstructors(): Promise<InstructorProfile[]> {
         }
       }
 
-      writeApprovedCache(loaded);
-      return loaded;
+      const enriched = loaded.map((profile) => applyActiveClassToProfile(profile, activeClasses));
+      const leadClassMatch = activeClasses.find((cls) =>
+        ADMIN_EMAILS.includes(String(cls.instructorEmail || '').trim().toLowerCase())
+      );
+      const leadClassSummary = leadClassMatch ? buildClassSummary(leadClassMatch) : null;
+
+      writeApprovedCache(enriched, leadClassSummary);
+      return enriched;
     } catch {
       return [];
     } finally {
@@ -264,6 +347,7 @@ export function mergeInstructorsWithLead(
 ): InstructorProfile[] {
   const baseLead = getLeadInstructor(metrics);
   const savedLead = approvedList.find((inst) => inst.isLead);
+  const cachedLeadClass = approvedMemoryCache?.leadClassSummary;
   const mergedLead: InstructorProfile = savedLead
     ? {
         ...baseLead,
@@ -279,12 +363,17 @@ export function mergeInstructorsWithLead(
         credentials: savedLead.credentials.length > 0 ? savedLead.credentials : baseLead.credentials,
         activeDays: savedLead.activeDays.length > 0 ? savedLead.activeDays : baseLead.activeDays,
         scheduleTime: savedLead.scheduleTime || baseLead.scheduleTime,
+        activeClassTitle: savedLead.activeClassTo ? savedLead.activeClassTitle : baseLead.activeClassTitle,
+        activeClassStatus: savedLead.activeClassTo ? savedLead.activeClassStatus : baseLead.activeClassStatus,
+        activeClassTo: savedLead.activeClassTo || baseLead.activeClassTo,
         showStats: savedLead.showStats ?? baseLead.showStats,
         lectureHours: savedLead.lectureHours || baseLead.lectureHours,
         studentCount: savedLead.studentCount || baseLead.studentCount,
         photoUrl: savedLead.photoUrl || baseLead.photoUrl
       }
-    : baseLead;
+    : cachedLeadClass
+      ? { ...baseLead, ...cachedLeadClass }
+      : baseLead;
 
   return [mergedLead, ...approvedList.filter((inst) => !inst.isLead)];
 }

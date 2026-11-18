@@ -5,6 +5,7 @@ import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'fireb
 import { Calendar, CheckCircle2, Clock, MapPin, Plus, Save, Users, X } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
+import { clearApprovedInstructorsCache } from '../lib/instructorsData';
 import { SiteHeader } from './SiteHeader';
 import { InstructorQuickTabs } from './InstructorQuickTabs';
 
@@ -50,6 +51,7 @@ export default function InstructorClassesManagePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthorizedInstructor, setIsAuthorizedInstructor] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [classes, setClasses] = useState<InstructorClassDoc[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [editing, setEditing] = useState<InstructorClassDoc | null>(null);
@@ -57,11 +59,13 @@ export default function InstructorClassesManagePage() {
   const [notice, setNotice] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const loadMyClasses = async (uid: string) => {
+  const loadMyClasses = async (uid: string, adminFlag = false) => {
     setLoadingList(true);
     try {
-      const q = query(collection(db, 'classes'), where('instructorUid', '==', uid));
-      const snap = await getDocs(q);
+      const targetRef = adminFlag
+        ? collection(db, 'classes')
+        : query(collection(db, 'classes'), where('instructorUid', '==', uid));
+      const snap = await getDocs(targetRef);
       const list: InstructorClassDoc[] = snap.docs.map((docSnap) => {
         const d = docSnap.data();
         return {
@@ -96,20 +100,25 @@ export default function InstructorClassesManagePage() {
       setUser(currentUser);
       if (!currentUser) {
         setIsAuthorizedInstructor(false);
+        setIsAdminUser(false);
         setAuthLoading(false);
         return;
       }
 
-      const isAdminUser = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      const adminFlag = ADMIN_EMAILS.includes((currentUser.email || '').toLowerCase());
+      setIsAdminUser(adminFlag);
       try {
         const snap = await getDoc(doc(db, 'instructors', currentUser.uid));
-        const ok = isAdminUser || snap.exists();
+        const ok = adminFlag || snap.exists();
         setIsAuthorizedInstructor(ok);
         if (ok) {
-          await loadMyClasses(currentUser.uid);
+          await loadMyClasses(currentUser.uid, adminFlag);
         }
       } catch {
-        setIsAuthorizedInstructor(isAdminUser);
+        setIsAuthorizedInstructor(adminFlag);
+        if (adminFlag) {
+          await loadMyClasses(currentUser.uid, true);
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -134,7 +143,13 @@ export default function InstructorClassesManagePage() {
     setNotice('');
     setSaving(true);
 
-    const nextStatus = submitForApproval ? 'pending' : 'draft';
+    const nextStatus = submitForApproval
+      ? isAdminUser
+        ? editing.status === 'confirmed' || editing.status === 'started'
+          ? editing.status
+          : 'published'
+        : 'pending'
+      : 'draft';
     try {
       await updateDoc(doc(db, 'classes', editing.id), {
         title: editing.title.trim(),
@@ -146,6 +161,7 @@ export default function InstructorClassesManagePage() {
         location: editing.location.trim(),
         status: nextStatus
       });
+      clearApprovedInstructorsCache();
 
       setClasses((prev) =>
         prev.map((c) =>
@@ -154,7 +170,9 @@ export default function InstructorClassesManagePage() {
       );
       setNotice(
         submitForApproval
-          ? `[${editing.title}] 일정 수정이 저장되어 운영자 승인 요청 상태로 전환되었습니다.`
+          ? isAdminUser
+            ? `[${editing.title}] 일정 수정이 저장되어 일정표에 즉시 공개 반영되었습니다.`
+            : `[${editing.title}] 일정 수정이 저장되어 운영자 승인 요청 상태로 전환되었습니다.`
           : `[${editing.title}] 초안으로 저장되었습니다.`
       );
       setEditing(null);
@@ -450,7 +468,12 @@ export default function InstructorClassesManagePage() {
                 onClick={() => handleSaveEdit(true)}
                 className="hero-cta flex-1 justify-center"
               >
-                <Save size={15} /> {saving ? '저장 중...' : '일정 저장 · 승인 요청 →'}
+                <Save size={15} />{' '}
+                {saving
+                  ? '저장 중...'
+                  : isAdminUser
+                    ? '일정 저장 · 즉시 공개 반영 →'
+                    : '일정 저장 · 승인 요청 →'}
               </button>
               <button
                 type="button"

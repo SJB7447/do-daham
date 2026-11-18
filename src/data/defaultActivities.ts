@@ -1,5 +1,5 @@
 import { ActivityItem } from '../types/activity';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const ENV_ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
@@ -179,6 +179,7 @@ export async function saveActivitiesToCloud(activities: ActivityItem[], userEmai
     currentData.activities = activities;
 
     await setDoc(docRef, {
+      user_id: auth.currentUser?.uid || currentData.user_id || 'admin',
       data: JSON.stringify(currentData),
       updated_at: new Date().toISOString()
     }, { merge: true });
