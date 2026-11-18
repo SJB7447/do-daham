@@ -402,10 +402,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 4. Classes: published/confirmed/started/closed are public; instructor owner or admin can read all states;
+    // 4. Classes: published/confirmed/started/closed or started == true classes are public;
+    //    instructor owner or admin can read all states;
     //    registered instructor can create/update only their own classes in draft/pending (cannot set started); admin-only delete
     match /classes/{classId} {
       allow read: if resource.data.status in ['published', 'confirmed', 'started', 'closed'] ||
+        resource.data.started == true ||
         (isAuthenticated() && resource.data.instructorUid == request.auth.uid) ||
         isAdmin();
       allow create: if (isAdmin() && isValidClass(request.resource.data)) ||
