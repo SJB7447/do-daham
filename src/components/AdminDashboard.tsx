@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   GoogleAuthProvider,
   signInWithPopup,
@@ -18,10 +18,11 @@ import {
   UserPlus, UserCheck, Copy, Check, XCircle, ShieldCheck, PlayCircle, Inbox, ExternalLink
 } from 'lucide-react';
 import { isYoutubeUrl, isEmbeddableYoutubeVideo, getYoutubeEmbedUrl } from '../lib/youtube';
-import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
+import { clearSiteSettingsCache, DEFAULT_SITE_SETTINGS, normalizeSiteSettings, SiteSettings } from '../lib/siteSettings';
 import { fetchFormSubmissions } from '../lib/formSubmissions';
 import AdminSubmissionsPanel from './AdminSubmissionsPanel';
 import { LetterLimitTextarea } from './LetterLimitTextarea';
+import { SiteHeader } from './SiteHeader';
 import mCubeLogo from '../assets/m_cube_logo.png';
 
 const DEFAULT_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@CodeM_Studio_AI11';
@@ -167,6 +168,7 @@ function isAuthorizedAdmin(currentUser: User | null): boolean {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -193,6 +195,25 @@ export default function AdminDashboard() {
 
   // UI state
   const [activeTab, setActiveTab] = useState<CmsTab>('content');
+
+  useEffect(() => {
+    const rawTab = new URLSearchParams(location.search).get('tab');
+    const resolvedTab = rawTab === 'instructors' ? 'approvals' : rawTab;
+    if (
+      resolvedTab === 'content' ||
+      resolvedTab === 'submissions' ||
+      resolvedTab === 'invites' ||
+      resolvedTab === 'approvals' ||
+      resolvedTab === 'classes'
+    ) {
+      setActiveTab(resolvedTab);
+    }
+  }, [location.search]);
+
+  const selectTab = (next: CmsTab) => {
+    setActiveTab(next);
+    navigate(`/admin?tab=${next}`, { replace: true });
+  };
   const [loadingData, setLoadingData] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -795,6 +816,7 @@ export default function AdminDashboard() {
         updated_at: new Date().toISOString()
       }, { merge: true });
 
+      clearSiteSettingsCache();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e: any) {
@@ -866,34 +888,24 @@ export default function AdminDashboard() {
   // ═══ Render CMS Dashboard (Logged In) ═══
   return (
     <div className="min-h-screen bg-[#050505] text-[#f4f4f0] font-sans pb-32 noise-overlay">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full border-b border-[#f4f4f0]/20 bg-[#050505]/80 backdrop-blur-md z-50">
-        <div className="flex justify-between items-center p-4 md:p-6 max-w-4xl mx-auto w-full">
-          <button 
-            onClick={() => navigate('/')} 
-            className="flex items-center gap-2 text-sm font-bold opacity-60 hover:opacity-100 hover:text-[#ccff00] transition-all uppercase tracking-widest"
-          >
-            <ArrowLeft size={16} /> Home (Preview)
-          </button>
-          
-          <div className="flex items-center gap-6">
-            <span className="text-xs font-mono font-bold text-[#ccff00] hidden sm:inline">{user.email}</span>
-            <button 
-              onClick={handleLogout} 
-              className="text-xs uppercase font-bold opacity-50 hover:text-red-400 hover:opacity-100 transition-all flex items-center gap-1"
-            >
-              <LogOut size={12} /> Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader badge="ADMIN CMS" ctaLabel="홈 미리보기 →" ctaTo="/" />
 
       {/* Main CMS Form container */}
-      <div className="max-w-4xl mx-auto px-4 md:px-6 mt-28 space-y-8 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 pt-28 space-y-8 relative z-10">
         <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 border-b border-[#f4f4f0]/10 pb-6">
           <div>
-            <div className="inline-block text-[10px] font-extrabold tracking-[0.16em] px-2.5 py-1 bg-[#f4f4f0] text-black mb-2">
-              CMS · 운영자 전용
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <div className="inline-block text-[10px] font-extrabold tracking-[0.16em] px-2.5 py-1 bg-[#f4f4f0] text-black">
+                CMS · 운영자 전용
+              </div>
+              <span className="text-xs font-mono font-bold text-[#ccff00]">{user.email}</span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-xs font-bold text-[#f4f4f0]/70 hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <LogOut size={12} /> 로그아웃
+              </button>
             </div>
             <h1 className="text-4xl font-black uppercase text-[#ccff00] tracking-wider mb-2">DO-DAHAM CMS</h1>
             <p className="text-sm font-bold opacity-40">사이트 콘텐츠, 강사 초대 링크 발급, 강사 프로필 승인을 관리합니다.</p>
@@ -957,7 +969,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-2 border-b border-[#f4f4f0]/15 pb-4">
           <button
             type="button"
-            onClick={() => setActiveTab('content')}
+            onClick={() => selectTab('content')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors cursor-pointer ${
               activeTab === 'content'
                 ? 'bg-[#ccff00] text-black border-[#ccff00]'
@@ -968,7 +980,7 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('submissions')}
+            onClick={() => selectTab('submissions')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === 'submissions'
                 ? 'bg-[#ccff00] text-black border-[#ccff00]'
@@ -984,7 +996,7 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('invites')}
+            onClick={() => selectTab('invites')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === 'invites'
                 ? 'bg-[#ccff00] text-black border-[#ccff00]'
@@ -995,7 +1007,7 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('approvals')}
+            onClick={() => selectTab('approvals')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === 'approvals'
                 ? 'bg-[#ccff00] text-black border-[#ccff00]'
@@ -1009,7 +1021,7 @@ export default function AdminDashboard() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('classes')}
+            onClick={() => selectTab('classes')}
             className={`px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider border transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === 'classes'
                 ? 'bg-[#ccff00] text-black border-[#ccff00]'
@@ -1025,7 +1037,7 @@ export default function AdminDashboard() {
             onQuickInviteEmail={(email, memo) => {
               setInviteEmail(email);
               setInviteMemo(memo);
-              setActiveTab('invites');
+              selectTab('invites');
             }}
             onCountUpdate={(newCount) => setNewSubmissionCount(newCount)}
           />

@@ -390,40 +390,32 @@ export default function InstructorsPage() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-              {siteSettings.instructorRecruitOpen && siteSettings.instructorRecruitFormUrl ? (
-                isInternalFormUrl(siteSettings.instructorRecruitFormUrl) ? (
-                  <Link
-                    to={siteSettings.instructorRecruitFormUrl}
-                    className="hero-cta-secondary justify-center"
-                  >
-                    강사 합류 문의 →
+              {(() => {
+                const recruitTarget = siteSettings.instructorRecruitFormUrl || '/apply/instructor-recruit';
+                return isInternalFormUrl(recruitTarget) ? (
+                  <Link to={recruitTarget} className="hero-cta justify-center">
+                    강사 합류 신청 폼 작성 →
                   </Link>
                 ) : (
                   <a
-                    href={siteSettings.instructorRecruitFormUrl}
+                    href={recruitTarget}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hero-cta-secondary justify-center"
+                    className="hero-cta justify-center"
                   >
-                    강사 합류 문의 → <ExternalLink size={14} />
+                    강사 합류 신청 폼 작성 → <ExternalLink size={14} />
                   </a>
-                )
-              ) : (
-                <>
-                  <span className="inline-flex items-center justify-center min-h-[48px] px-5 border border-white/20 text-[#8C8C8C] text-xs font-extrabold rounded-[2px]">
-                    강사 합류 폼 준비 중
-                  </span>
-                  {siteSettings.kakaoUrl && (
-                    <a
-                      href={siteSettings.kakaoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hero-cta-secondary justify-center"
-                    >
-                      카카오톡 문의 → <ExternalLink size={14} />
-                    </a>
-                  )}
-                </>
+                );
+              })()}
+              {siteSettings.kakaoUrl && (
+                <a
+                  href={siteSettings.kakaoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-cta-secondary justify-center"
+                >
+                  카카오톡 문의 → <ExternalLink size={14} />
+                </a>
               )}
             </div>
           </div>

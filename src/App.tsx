@@ -8,6 +8,7 @@ import { SiteHeader } from './components/SiteHeader';
 import { DEFAULT_METRICS, fetchLiveClassMetrics, LiveClassMetrics } from './lib/classMetrics';
 import {
   DEFAULT_SITE_SETTINGS,
+  PORTFOLIO_CACHE_KEY,
   isInternalFormUrl,
   normalizeSiteSettings,
   SiteSettings
@@ -29,8 +30,6 @@ const InstructorClassesManagePage = lazy(() => import('./components/InstructorCl
 const InstructorLoginPage = lazy(() => import('./components/InstructorLoginPage'));
 const ProjectPage = lazy(() => import('./components/ProjectPage'));
 const FormApplyPage = lazy(() => import('./components/FormApplyPage'));
-
-const PORTFOLIO_CACHE_KEY = 'dodaham-portfolio-cache-v1';
 
 const DEFAULT_PORTFOLIO_DATA = {
   userName: "DO-DAHAM",

@@ -11,8 +11,10 @@ export interface SiteSettings {
   classApplicationClosedMessage: string;
   instructorRecruitOpen: boolean;
   instructorRecruitFormUrl: string;
+  siteSettingsVersion?: number;
 }
 
+export const SITE_SETTINGS_VERSION = 2;
 const LEGACY_PLACEHOLDER_FORM_URL = 'https://forms.gle/w1cTzZYUCGkqdDTT6';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -20,11 +22,12 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   kakaoUrl: 'https://open.kakao.com/me/dodaham',
   projectInquiryFormUrl: '/apply/project-inquiry',
   classInquiryFormUrl: '/apply/class-inquiry',
-  classApplicationOpen: false, // 요청에 따라 1기 강의 신청 폼은 우선 닫아둠 (CMS에서 개방 가능)
+  classApplicationOpen: false, // 1기 강의 신청 폼은 CMS에서 개방 가능
   classApplicationFormUrl: '/apply/class-apply',
   classApplicationClosedMessage: '1기 신청 폼 정비 중 · 곧 오픈됩니다',
-  instructorRecruitOpen: false, // 요청에 따라 강사 합류 문의 폼도 우선 닫아둠 (CMS에서 개방 가능)
-  instructorRecruitFormUrl: '/apply/instructor-recruit'
+  instructorRecruitOpen: true, // 강사 합류 문의 폼 기본 활성화 (CMS에서 제어 가능)
+  instructorRecruitFormUrl: '/apply/instructor-recruit',
+  siteSettingsVersion: SITE_SETTINGS_VERSION
 };
 
 export function isInternalFormUrl(url: string): boolean {
@@ -44,6 +47,7 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
   if (!raw || typeof raw !== 'object') {
     return { ...DEFAULT_SITE_SETTINGS };
   }
+  const version = Number(raw.siteSettingsVersion || 0);
   return {
     kakaoHandle: String(raw.kakaoHandle || DEFAULT_SITE_SETTINGS.kakaoHandle),
     kakaoUrl: String(raw.kakaoUrl || DEFAULT_SITE_SETTINGS.kakaoUrl).trim(),
@@ -69,21 +73,36 @@ export function normalizeSiteSettings(raw: any): SiteSettings {
       raw.classApplicationClosedMessage || DEFAULT_SITE_SETTINGS.classApplicationClosedMessage
     ).trim(),
     instructorRecruitOpen:
-      typeof raw.instructorRecruitOpen === 'boolean'
-        ? raw.instructorRecruitOpen
-        : DEFAULT_SITE_SETTINGS.instructorRecruitOpen,
+      version < SITE_SETTINGS_VERSION
+        ? true
+        : typeof raw.instructorRecruitOpen === 'boolean'
+          ? raw.instructorRecruitOpen
+          : DEFAULT_SITE_SETTINGS.instructorRecruitOpen,
     instructorRecruitFormUrl: resolveFormUrl(
       raw.instructorRecruitFormUrl,
       DEFAULT_SITE_SETTINGS.instructorRecruitFormUrl
-    )
+    ),
+    siteSettingsVersion: SITE_SETTINGS_VERSION
   };
 }
 
 const CACHE_TTL_MS = 60_000;
-const SITE_SETTINGS_CACHE_KEY = 'dodaham-site-settings-cache-v1';
+export const PORTFOLIO_CACHE_KEY = 'dodaham-portfolio-cache-v2';
+const SITE_SETTINGS_CACHE_KEY = 'dodaham-site-settings-cache-v2';
 
 let memoryCache: { value: SiteSettings; cachedAt: number } | null = null;
 let inflightSettings: Promise<SiteSettings> | null = null;
+
+export function clearSiteSettingsCache() {
+  memoryCache = null;
+  inflightSettings = null;
+  try {
+    sessionStorage.removeItem(SITE_SETTINGS_CACHE_KEY);
+    sessionStorage.removeItem(PORTFOLIO_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 function readStoredSettingsCache(): SiteSettings | null {
   try {

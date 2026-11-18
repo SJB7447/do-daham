@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { Calendar, CheckCircle2, ImagePlus, LogOut, Menu, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
+import { Calendar, CheckCircle2, ImagePlus, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
 import { ADMIN_EMAILS } from '../data/defaultActivities';
-import { CrystalCube } from './CrystalCube';
-import { MobileMenuOverlay } from './MobileMenuOverlay';
+import { SiteHeader } from './SiteHeader';
+import { InstructorQuickTabs } from './InstructorQuickTabs';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 type Weekday = '일' | '월' | '화' | '수' | '목' | '금' | '토';
@@ -44,8 +44,6 @@ export default function InstructorProfileEditPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [notice, setNotice] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const menuBtnRef = useRef<HTMLButtonElement>(null);
 
   const [form, setForm] = useState<InstructorFormState>({
     displayName: '',
@@ -232,61 +230,14 @@ export default function InstructorProfileEditPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F2F2] selection:bg-[#C6FF00] selection:text-[#0A0A0A]">
-      {/* Instructor Mode Top Nav */}
-      <nav className="bar scrolled">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="nav-logo">
-            <CrystalCube size={26} pfx="insted" />
-            <span className="nav-logo-text uppercase tracking-wider">DO-DAHAM</span>
-          </Link>
-          <span className="px-2 py-0.5 text-[10px] font-extrabold tracking-widest bg-[#C6FF00] text-[#0A0A0A] rounded-[2px]">
-            강사 모드
-          </span>
-        </div>
-
-        <div className="nav-links">
-          <Link to="/instructor/profile" className="nav-class-link">
-            <span className="nav-class-dot" aria-hidden="true" />
-            내 프로필
-          </Link>
-          <Link to="/instructor/classes">내 수업 관리</Link>
-          <Link to="/instructor/classes/new">수업 등록</Link>
-          <Link to="/class/instructors">공개 강사진</Link>
-          <Link to="/class/schedule">일정표</Link>
-        </div>
-
-        <div className="nav-actions-right">
-          {user && (
-            <button
-              type="button"
-              onClick={() => signOut(auth)}
-              className="text-xs font-bold text-[#8C8C8C] hover:text-[#E02898] inline-flex items-center gap-1.5 min-h-[44px] px-2 cursor-pointer"
-            >
-              <LogOut size={14} /> 로그아웃
-            </button>
-          )}
-          <button
-            ref={menuBtnRef}
-            type="button"
-            className="nav-menu-btn"
-            aria-label="강사 메뉴 열기"
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-nav-overlay"
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-      </nav>
-
-      <MobileMenuOverlay
-        isOpen={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        triggerRef={menuBtnRef}
-        mode="instructor"
+      <SiteHeader
+        badge="강사 모드"
+        ctaLabel="공개 강사진 →"
+        ctaTo="/class/instructors"
       />
 
       <main className="pt-28 sm:pt-32 pb-20 px-[22px] sm:px-8 lg:px-14 max-w-6xl mx-auto">
+        {user && isAuthorizedInstructor && <InstructorQuickTabs />}
         {authLoading ? (
           <div className="py-24 text-center text-sm text-[#8C8C8C]">계정 상태를 확인하는 중...</div>
         ) : !user ? (

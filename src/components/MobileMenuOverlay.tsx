@@ -1,6 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Settings } from 'lucide-react';
+import { LogOut, Settings, ShieldCheck, GraduationCap, X } from 'lucide-react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { isAuthorizedAdmin } from '../data/defaultActivities';
 import { CrystalCube } from './CrystalCube';
 
 interface MobileMenuOverlayProps {
@@ -9,6 +12,9 @@ interface MobileMenuOverlayProps {
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   watchHref?: string;
   mode?: 'public' | 'instructor';
+  currentUser?: User | null;
+  isAdmin?: boolean;
+  onLogout?: () => void;
 }
 
 interface MenuItem {
@@ -30,7 +36,8 @@ const PUBLIC_MENU_ITEMS: MenuItem[] = [
     children: [
       { label: '클래스 1기 · 수강료', to: '/class' },
       { label: '수업 일정 · 신청 현황', to: '/class/schedule' },
-      { label: '강사진 프로필', to: '/class/instructors' }
+      { label: '강사진 프로필', to: '/class/instructors' },
+      { label: '강사 합류 지원', to: '/apply/instructor-recruit' }
     ]
   },
   { num: '04', label: '활동 기록', sub: '교육 현장 · 언론 보도', to: '/activity' },
@@ -45,16 +52,60 @@ const INSTRUCTOR_MENU_ITEMS: MenuItem[] = [
   { num: '05', label: '수업 일정표', sub: '달력 · 신청 현황', to: '/class/schedule' }
 ];
 
+const INSTRUCTOR_QUICK_LINKS = [
+  { label: '내 프로필 편집', to: '/instructor/profile' },
+  { label: '내 수업 관리', to: '/instructor/classes' },
+  { label: '+ 새 수업 등록', to: '/instructor/classes/new' },
+  { label: '수료생 작품 등록', to: '/class#showcase' }
+];
+
+const ADMIN_QUICK_LINKS = [
+  { label: '신청 · 문의 관리', to: '/admin?tab=submissions', tabKey: 'submissions' },
+  { label: '강사 프로필 승인', to: '/admin?tab=approvals', tabKey: 'approvals' },
+  { label: '강사 초대 링크', to: '/admin?tab=invites', tabKey: 'invites' },
+  { label: '수업 · 실적 관리', to: '/admin?tab=classes', tabKey: 'classes' },
+  { label: '사이트 콘텐츠', to: '/admin?tab=content', tabKey: 'content' },
+  { label: '활동 기록 관리', to: '/activity' }
+];
+
 export function MobileMenuOverlay({
   isOpen,
   onClose,
   triggerRef,
   watchHref = 'https://www.youtube.com/@CodeM_Studio_AI11',
-  mode = 'public'
+  mode = 'public',
+  currentUser,
+  isAdmin,
+  onLogout
 }: MobileMenuOverlayProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [fallbackUser, setFallbackUser] = useState<User | null>(() => auth.currentUser);
+
+  useEffect(() => {
+    if (currentUser !== undefined) return;
+    const unsub = onAuthStateChanged(auth, setFallbackUser);
+    return () => unsub();
+  }, [currentUser]);
+
+  const resolvedUser = currentUser !== undefined ? currentUser : fallbackUser;
+  const resolvedIsAdmin =
+    isAdmin !== undefined ? isAdmin : isAuthorizedAdmin(resolvedUser?.email);
+  const activeAdminTab = new URLSearchParams(search).get('tab') || 'content';
+
+  const handleSignOut = async () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+    onClose();
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignore signOut errors
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -146,7 +197,7 @@ export function MobileMenuOverlay({
               item.to === '/'
                 ? pathname === '/'
                 : item.children
-                  ? pathname.startsWith('/class')
+                  ? pathname.startsWith('/class') || pathname.startsWith('/apply')
                   : pathname === item.to;
 
             return (
@@ -188,6 +239,67 @@ export function MobileMenuOverlay({
             );
           })}
         </nav>
+
+        {/* Role-Based Quick Menus (Visible immediately after Instructor / Admin Sign-in) */}
+        {resolvedUser && (
+          <div className="space-y-4 mb-6">
+            <div className="p-3.5 border border-[#C6FF00]/30 bg-[#C6FF00]/[0.05] rounded-[2px]">
+              <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-[0.12em] text-[#C6FF00] mb-2.5">
+                <GraduationCap size={14} aria-hidden="true" />
+                <span>강사 전용 메뉴</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {INSTRUCTOR_QUICK_LINKS.map((link) => {
+                  const active = pathname === link.to;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={onClose}
+                      className={`text-[13px] font-semibold px-3 py-2.5 rounded-[2px] border transition-colors ${
+                        active
+                          ? 'border-[#C6FF00] bg-[#C6FF00] text-[#0A0A0A]'
+                          : 'border-white/[0.14] text-[#F2F2F2] hover:border-[#C6FF00] hover:text-[#C6FF00]'
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {resolvedIsAdmin && (
+              <div className="p-3.5 border border-[#28C8F0]/35 bg-[#28C8F0]/[0.06] rounded-[2px]">
+                <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-[0.12em] text-[#28C8F0] mb-2.5">
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  <span>관리자 전용 CMS</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {ADMIN_QUICK_LINKS.map((link) => {
+                    const active = link.tabKey
+                      ? pathname === '/admin' && activeAdminTab === link.tabKey
+                      : pathname === link.to;
+                    return (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        onClick={onClose}
+                        className={`text-[13px] font-semibold px-3 py-2.5 rounded-[2px] border transition-colors ${
+                          active
+                            ? 'border-[#28C8F0] bg-[#28C8F0] text-[#0A0A0A]'
+                            : 'border-white/[0.14] text-[#F2F2F2] hover:border-[#28C8F0] hover:text-[#28C8F0]'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mobile-menu-foot">
@@ -195,14 +307,36 @@ export function MobileMenuOverlay({
           프로젝트 · 강의 문의 →
         </Link>
         <div className="mobile-menu-meta">
-          <span>카카오톡 @AI다함스튜디오</span>
-          <Link
-            to="/admin"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 hover:text-[#C6FF00] transition-colors"
-          >
-            <Settings size={12} /> 관리자
-          </Link>
+          <span>{resolvedUser ? resolvedUser.email : '카카오톡 @AI다함스튜디오'}</span>
+          <div className="flex items-center gap-3">
+            {resolvedUser ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1.5 text-xs font-bold hover:underline cursor-pointer"
+                style={{ color: 'var(--magenta)' }}
+              >
+                <LogOut size={12} /> 로그아웃
+              </button>
+            ) : (
+              <>
+                <Link
+                  to="/instructor/login"
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1 hover:text-[#C6FF00] transition-colors"
+                >
+                  강사 로그인
+                </Link>
+                <Link
+                  to="/admin"
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1.5 hover:text-[#C6FF00] transition-colors"
+                >
+                  <Settings size={12} /> 관리자
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
