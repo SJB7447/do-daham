@@ -99,9 +99,22 @@ function parseCredentialItem(raw: string, idx: number, isLead: boolean): { label
       text: match[2].trim()
     };
   }
-  const leadDefaults = ['AWARD', 'MAIN', 'TEACHING', 'CAREER 4', 'CAREER 5'];
-  const label = isLead ? leadDefaults[idx] || `CAREER ${idx + 1}` : `CAREER ${idx + 1}`;
-  return { label, text: trimmed };
+  if (/공모전|입상|수상|대상|최우수|우수상|선정/.test(trimmed)) {
+    return { label: 'AWARD', text: trimmed };
+  }
+  if (/주강사|메인|총괄|양성\s*과정/.test(trimmed)) {
+    return { label: 'MAIN', text: trimmed };
+  }
+  if (/출강|배움터|강의|교육|특강|튜터/.test(trimmed)) {
+    return { label: 'LECTURE', text: trimmed };
+  }
+  if (/개발|제작|웹|영상|스튜디오|구축|기획/.test(trimmed)) {
+    return { label: 'STUDIO', text: trimmed };
+  }
+  return {
+    label: isLead ? 'CAREER' : `CAREER ${idx + 1}`,
+    text: trimmed
+  };
 }
 
 function inferFieldsFromTags(tags: string[]): Exclude<FieldFilter, 'ALL'>[] {
@@ -117,7 +130,7 @@ function inferFieldsFromTags(tags: string[]): Exclude<FieldFilter, 'ALL'>[] {
 }
 
 const CACHE_TTL_MS = 60_000;
-const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v3';
+const APPROVED_INSTRUCTORS_CACHE_KEY = 'dodaham-approved-instructors-v4';
 
 interface ActiveClassSummary {
   activeClassTitle: string;
@@ -259,6 +272,12 @@ function mapDocToInstructorProfile(
   const isLead = isLeadInstructorRecord(emailLower, name);
   const accent = isLead ? '#C6FF00' : PARTNER_PALETTE[idx % PARTNER_PALETTE.length];
   const tags: string[] = Array.isArray(d.tags) ? d.tags.filter(Boolean) : [];
+  const rawBio = String(d.bio || '').trim();
+  const resolvedBio =
+    rawBio ||
+    (!isLead
+      ? 'DO-DAHAM CLASS 파트너 강사입니다. 상세 소개 및 담당 커리큘럼이 곧 업데이트됩니다.'
+      : '');
   return {
     id: docId,
     uid: docId,
@@ -270,8 +289,8 @@ function mapDocToInstructorProfile(
     badgeText: isLead ? '대표 강사' : '파트너 강사',
     accent,
     role: String(d.title || 'DO-DAHAM 파트너 강사'),
-    bio: String(d.bio || ''),
-    detailBio: String(d.bio || ''),
+    bio: resolvedBio,
+    detailBio: resolvedBio,
     fields: inferFieldsFromTags(tags),
     tags,
     credentials: Array.isArray(d.credentials)

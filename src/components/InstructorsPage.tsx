@@ -338,30 +338,34 @@ export default function InstructorsPage() {
                       {inst.bio}
                     </p>
 
-                    <div className="flex flex-wrap gap-1.5 mb-5">
-                      {inst.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[11px] font-semibold px-2.5 py-1 rounded-[2px] border border-white/[0.12] bg-white/[0.03] text-[#F2F2F2]/90"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="border-t border-white/[0.08] pt-4 mb-5 space-y-2.5">
-                      {inst.credentials.map((cred) => (
-                        <div key={cred.label} className="text-[12.5px] font-medium leading-relaxed">
+                    {inst.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-5">
+                        {inst.tags.map((tag) => (
                           <span
-                            className="inline-block font-extrabold tracking-[0.12em] mr-2"
-                            style={{ color: toThemeAccent(inst.accent) }}
+                            key={tag}
+                            className="text-[11px] font-semibold px-2.5 py-1 rounded-[2px] border border-white/[0.12] bg-white/[0.03] text-[#F2F2F2]/90"
                           >
-                            {cred.label}
+                            {tag}
                           </span>
-                          <span className="text-[#A3A79F] break-keep">{cred.text}</span>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {inst.credentials.length > 0 && (
+                      <div className="border-t border-white/[0.08] pt-4 mb-5 space-y-2.5">
+                        {inst.credentials.map((cred, idx) => (
+                          <div key={`${cred.label}-${idx}`} className="text-[12.5px] font-medium leading-relaxed">
+                            <span
+                              className="inline-block font-extrabold tracking-[0.12em] mr-2"
+                              style={{ color: toThemeAccent(inst.accent) }}
+                            >
+                              {cred.label}
+                            </span>
+                            <span className="text-[#A3A79F] break-keep">{cred.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Day Strip */}
                     <div className="border-t border-white/[0.08] pt-4 mb-5">
@@ -554,26 +558,28 @@ export default function InstructorsPage() {
                 {selectedInstructor.detailBio}
               </p>
 
-              <div className="space-y-2.5">
-                {selectedInstructor.credentials.map((cred) => (
-                  <div
-                    key={cred.label}
-                    className="flex items-start gap-2.5 text-sm text-[#F2F2F2]/85"
-                  >
-                    <CheckCircle2
-                      size={16}
-                      className="shrink-0 mt-0.5"
-                      style={{ color: toThemeAccent(selectedInstructor.accent) }}
-                    />
-                    <span className="break-keep">
-                      <strong className="text-xs tracking-wider mr-1.5" style={{ color: toThemeAccent(selectedInstructor.accent) }}>
-                        {cred.label}
-                      </strong>
-                      {cred.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {selectedInstructor.credentials.length > 0 && (
+                <div className="space-y-2.5">
+                  {selectedInstructor.credentials.map((cred, idx) => (
+                    <div
+                      key={`${cred.label}-${idx}`}
+                      className="flex items-start gap-2.5 text-sm text-[#F2F2F2]/85"
+                    >
+                      <CheckCircle2
+                        size={16}
+                        className="shrink-0 mt-0.5"
+                        style={{ color: toThemeAccent(selectedInstructor.accent) }}
+                      />
+                      <span className="break-keep">
+                        <strong className="text-xs tracking-wider mr-1.5" style={{ color: toThemeAccent(selectedInstructor.accent) }}>
+                          {cred.label}
+                        </strong>
+                        {cred.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="bg-black/40 border border-white/[0.08] rounded-[2px] p-4">
                 <div className="text-[10px] font-extrabold tracking-[0.14em] text-[#8C8C8C] mb-1.5 flex items-center gap-1.5">
