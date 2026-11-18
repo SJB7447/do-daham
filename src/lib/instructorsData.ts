@@ -131,10 +131,36 @@ let approvedMemoryCache: {
   cachedAt: number;
 } | null = null;
 let inflightApproved: Promise<InstructorProfile[]> | null = null;
+const instructorAuthCache = new Map<string, boolean>();
+
+export function markRegisteredInstructorCache(uid: string) {
+  if (uid) instructorAuthCache.set(uid, true);
+}
+
+export async function checkIsRegisteredInstructor(
+  user: { uid: string; email?: string | null } | null
+): Promise<boolean> {
+  if (!user) return false;
+  if (ADMIN_EMAILS.includes((user.email || '').trim().toLowerCase())) {
+    return true;
+  }
+  if (instructorAuthCache.has(user.uid)) {
+    return instructorAuthCache.get(user.uid) ?? false;
+  }
+  try {
+    const snap = await getDoc(doc(db, 'instructors', user.uid));
+    const exists = snap.exists();
+    instructorAuthCache.set(user.uid, exists);
+    return exists;
+  } catch {
+    return false;
+  }
+}
 
 export function clearApprovedInstructorsCache() {
   approvedMemoryCache = null;
   inflightApproved = null;
+  instructorAuthCache.clear();
   try {
     sessionStorage.removeItem(APPROVED_INSTRUCTORS_CACHE_KEY);
   } catch {

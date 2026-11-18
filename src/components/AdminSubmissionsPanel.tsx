@@ -23,6 +23,7 @@ import {
   FormSubmissionRecord,
   FormSubmissionStatus,
   FormSubmissionType,
+  sanitizeExternalUrl,
   STATUS_COLORS,
   STATUS_LABELS,
   updateFormSubmission
@@ -588,17 +589,20 @@ export default function AdminSubmissionsPanel({
                         {cat}
                       </span>
                     ))}
-                    {item.portfolioUrl && (
-                      <a
-                        href={item.portfolioUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#28B8E8] hover:underline ml-auto"
-                      >
-                        <span>참고 / 포트폴리오 링크</span>
-                        <ExternalLink size={12} />
-                      </a>
-                    )}
+                    {(() => {
+                      const safePortfolioUrl = sanitizeExternalUrl(item.portfolioUrl);
+                      return safePortfolioUrl ? (
+                        <a
+                          href={safePortfolioUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#28B8E8] hover:underline ml-auto"
+                        >
+                          <span>참고 / 포트폴리오 링크</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 

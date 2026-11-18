@@ -116,20 +116,35 @@ function formatDateTime(ms: number): string {
   }
 }
 
+export function sanitizeExternalUrl(raw: unknown, maxLen = 500): string {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return '';
+  if (/^(javascript|data|vbscript|file):/i.test(trimmed)) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.slice(0, maxLen);
+  }
+  if (trimmed.startsWith('//')) {
+    return `https:${trimmed}`.slice(0, maxLen);
+  }
+  return `https://${trimmed}`.slice(0, maxLen);
+}
+
 export async function createFormSubmission(payload: CreateFormSubmissionPayload): Promise<string> {
   const docPayload: Record<string, unknown> = {
     formType: payload.formType,
-    name: payload.name.trim(),
-    contact: payload.contact.trim(),
-    email: (payload.email || '').trim(),
-    organization: (payload.organization || '').trim(),
-    tier: (payload.tier || '').trim(),
-    sessions: (payload.sessions || '').trim(),
+    name: payload.name.trim().slice(0, 80),
+    contact: payload.contact.trim().slice(0, 120),
+    email: (payload.email || '').trim().slice(0, 150),
+    organization: (payload.organization || '').trim().slice(0, 120),
+    tier: (payload.tier || '').trim().slice(0, 120),
+    sessions: (payload.sessions || '').trim().slice(0, 80),
     categories: Array.isArray(payload.categories) ? payload.categories.slice(0, 20) : [],
-    budget: (payload.budget || '').trim(),
-    schedulePref: (payload.schedulePref || '').trim(),
-    portfolioUrl: (payload.portfolioUrl || '').trim(),
-    message: (payload.message || '').trim(),
+    budget: (payload.budget || '').trim().slice(0, 80),
+    schedulePref: (payload.schedulePref || '').trim().slice(0, 200),
+    portfolioUrl: sanitizeExternalUrl(payload.portfolioUrl, 500),
+    message: (payload.message || '').trim().slice(0, 2000),
     consent: true,
     status: 'new',
     adminMemo: '',
@@ -182,7 +197,7 @@ export async function updateFormSubmission(
     patch.status = updates.status;
   }
   if (updates.adminMemo !== undefined) {
-    patch.adminMemo = updates.adminMemo.trim();
+    patch.adminMemo = updates.adminMemo.trim().slice(0, 1000);
   }
   await updateDoc(doc(db, 'form_submissions', id), patch);
 }
@@ -192,7 +207,8 @@ export async function deleteFormSubmission(id: string): Promise<void> {
 }
 
 function escapeCsvCell(value: string): string {
-  const safe = value.replace(/\r?\n/g, ' ');
+  const normalized = value.replace(/\r?\n/g, ' ');
+  const safe = /^[=+\-@\t\r]/.test(normalized) ? `'${normalized}` : normalized;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 

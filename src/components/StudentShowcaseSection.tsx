@@ -15,6 +15,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { ExternalLink, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { auth, db, storage } from '../lib/firebase';
 import { isAuthorizedAdmin } from '../data/defaultActivities';
+import { sanitizeExternalUrl } from '../lib/formSubmissions';
 import { LetterLimitInput, LetterLimitTextarea } from './LetterLimitTextarea';
 
 export interface StudentWorkItem {
@@ -176,6 +177,7 @@ export default function StudentShowcaseSection() {
     }
 
     const resolvedAuthorName = instructorDisplayName || user.displayName || '강사';
+    const cleanLinkUrl = sanitizeExternalUrl(linkUrl, 2048);
     setErrorMsg('');
     setSubmitting(true);
     try {
@@ -187,7 +189,7 @@ export default function StudentShowcaseSection() {
         studentLabel: studentLabel.trim() || '수료생 완성작',
         description: description.trim(),
         mediaUrl: mediaUrl.trim(),
-        linkUrl: linkUrl.trim(),
+        linkUrl: cleanLinkUrl,
         createdAt: serverTimestamp()
       });
 
@@ -200,7 +202,7 @@ export default function StudentShowcaseSection() {
         studentLabel: studentLabel.trim() || '수료생 완성작',
         description: description.trim(),
         mediaUrl: mediaUrl.trim(),
-        linkUrl: linkUrl.trim()
+        linkUrl: cleanLinkUrl
       };
       setWorks((prev) => [created, ...prev]);
       setTitle('');
@@ -317,16 +319,19 @@ export default function StudentShowcaseSection() {
                   </span>
 
                   <div className="flex items-center gap-2">
-                    {item.linkUrl && (
-                      <a
-                        href={item.linkUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#C6FF00] hover:underline min-h-[36px]"
-                      >
-                        결과물 보기 <ExternalLink size={12} />
-                      </a>
-                    )}
+                    {(() => {
+                      const safeLinkUrl = sanitizeExternalUrl(item.linkUrl, 2048);
+                      return safeLinkUrl ? (
+                        <a
+                          href={safeLinkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#C6FF00] hover:underline min-h-[36px]"
+                        >
+                          결과물 보기 <ExternalLink size={12} />
+                        </a>
+                      ) : null;
+                    })()}
                     {user && !item.isExample && (user.uid === item.authorUid || isAuthorizedAdmin(user.email)) && (
                       <button
                         type="button"

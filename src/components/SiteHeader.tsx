@@ -4,6 +4,7 @@ import { ChevronDown, LogOut, Menu } from 'lucide-react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { isAuthorizedAdmin } from '../data/defaultActivities';
+import { checkIsRegisteredInstructor } from '../lib/instructorsData';
 import { CrystalCube } from './CrystalCube';
 import { MobileMenuOverlay } from './MobileMenuOverlay';
 import { ThemePullCord } from './ThemePullCord';
@@ -63,6 +64,7 @@ export function SiteHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<DropdownKey>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(() => auth.currentUser);
+  const [isRegisteredInstructor, setIsRegisteredInstructor] = useState(false);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const navLinksRef = useRef<HTMLDivElement>(null);
 
@@ -71,8 +73,22 @@ export function SiteHeader({
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentUser) {
+      setIsRegisteredInstructor(false);
+      return;
+    }
+    checkIsRegisteredInstructor(currentUser).then((ok) => {
+      if (!cancelled) setIsRegisteredInstructor(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
+
   const isAdmin = isAuthorizedAdmin(currentUser?.email);
-  const isInstructor = Boolean(currentUser);
+  const isInstructor = isAdmin || isRegisteredInstructor;
 
   const isHome = pathname === '/';
   const isProject = pathname === '/project';
@@ -310,6 +326,7 @@ export function SiteHeader({
         watchHref={watchHref}
         currentUser={currentUser}
         isAdmin={isAdmin}
+        isInstructor={isInstructor}
         onLogout={handleLogout}
       />
       <ThemePullCord />

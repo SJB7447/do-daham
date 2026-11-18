@@ -94,7 +94,7 @@ service cloud.firestore {
     // Collection: form_submissions
     // Document ID: submissionId (auto-generated)
     // Fields:
-    //   - formType: string (required, 'class_apply' | 'instructor_recruit' | 'class_inquiry' | 'project_inquiry')
+    //   - formType: string (required, immutable, 'class_apply' | 'instructor_recruit' | 'class_inquiry' | 'project_inquiry')
     //   - name: string (required, 1..80 chars)
     //   - contact: string (required, 1..120 chars)
     //   - email: string (optional, 0..150 chars)
@@ -106,10 +106,10 @@ service cloud.firestore {
     //   - schedulePref: string (optional, 0..200 chars)
     //   - portfolioUrl: string (optional, 0..500 chars)
     //   - message: string (optional, 0..2000 chars)
-    //   - consent: bool (required, must be true on create)
-    //   - status: string (required, 'new' on create)
+    //   - consent: bool (required, immutable, must be true on create)
+    //   - status: string (required, 'new' on create; 'new' | 'contacted' | 'in_progress' | 'completed' | 'archived' on update)
     //   - adminMemo: string (optional, 0..1000 chars)
-    //   - createdAt: timestamp (required on create)
+    //   - createdAt: timestamp (required on create, immutable)
     //   - updatedAt: timestamp (optional)
     //
     // ===============================================================
@@ -135,6 +135,13 @@ service cloud.firestore {
             'sjb76337447@gmail.com'
           ]
         )
+      );
+    }
+
+    function isRegisteredInstructor() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        exists(/databases/$(database)/documents/instructors/$(request.auth.uid))
       );
     }
 
@@ -343,6 +350,18 @@ service cloud.firestore {
         (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
+    function isValidFormSubmissionUpdate(data) {
+      return hasOnlyAllowedFields([
+          'formType', 'name', 'contact', 'email', 'organization', 'tier',
+          'sessions', 'categories', 'budget', 'schedulePref', 'portfolioUrl',
+          'message', 'consent', 'status', 'adminMemo', 'createdAt', 'updatedAt'
+        ]) &&
+        data.status in ['new', 'contacted', 'in_progress', 'completed', 'archived'] &&
+        isValidOptionalString('adminMemo', 0, 1000) &&
+        areImmutableFieldsUnchanged(['formType', 'createdAt', 'consent']) &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -354,10 +373,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 2. Invites: admin or signed-in user read; admin create/delete;
-    //    admin update OR verified invited user claiming pending invite
+    // 2. Invites: admin full read; signed-in user single-doc get or limit(1) tokenHash lookup;
+    //    admin create/delete; admin update OR verified invited user claiming pending invite
     match /invites/{inviteId} {
-      allow read: if isAdmin() || isAuthenticated();
+      allow get: if isAdmin() || isAuthenticated();
+      allow list: if isAdmin() || (isAuthenticated() && request.query.limit <= 1);
       allow create: if isAdmin() && isValidInvite(request.resource.data);
       allow update: if (isAdmin() && isValidInvite(request.resource.data)) || isValidInviteClaim();
       allow delete: if isAdmin();
@@ -383,20 +403,20 @@ service cloud.firestore {
     }
 
     // 4. Classes: published/confirmed/started/closed are public; instructor owner or admin can read all states;
-    //    instructor can create/update only their own classes in draft/pending (cannot set started); admin-only delete
+    //    registered instructor can create/update only their own classes in draft/pending (cannot set started); admin-only delete
     match /classes/{classId} {
       allow read: if resource.data.status in ['published', 'confirmed', 'started', 'closed'] ||
         (isAuthenticated() && resource.data.instructorUid == request.auth.uid) ||
         isAdmin();
       allow create: if (isAdmin() && isValidClass(request.resource.data)) ||
-        (isAuthenticated() &&
+        (isRegisteredInstructor() &&
          request.resource.data.instructorUid == request.auth.uid &&
          request.resource.data.status in ['draft', 'pending'] &&
          (!('started' in request.resource.data) || request.resource.data.started == false) &&
          !('startedAt' in request.resource.data) &&
          isValidClass(request.resource.data));
       allow update: if (isAdmin() && isValidClass(request.resource.data)) ||
-        (isAuthenticated() &&
+        (isRegisteredInstructor() &&
          resource.data.instructorUid == request.auth.uid &&
          request.resource.data.instructorUid == request.auth.uid &&
          request.resource.data.status in ['draft', 'pending'] &&
@@ -413,14 +433,14 @@ service cloud.firestore {
     }
 
     // 6. Student Works: public read (showcase on /class);
-    //    authenticated users can create their own; author or admin can update/delete
+    //    registered instructors/admin can create their own; author or admin can update/delete
     match /student_works/{workId} {
       allow read: if true;
-      allow create: if isAuthenticated() &&
+      allow create: if isRegisteredInstructor() &&
         isValidStudentWork(request.resource.data) &&
         request.resource.data.authorUid == request.auth.uid;
       allow update: if (isAdmin() && isValidStudentWork(request.resource.data)) ||
-        (isAuthenticated() &&
+        (isRegisteredInstructor() &&
          resource.data.authorUid == request.auth.uid &&
          isValidStudentWork(request.resource.data) &&
          areImmutableFieldsUnchanged(['authorUid', 'createdAt']));
@@ -429,10 +449,11 @@ service cloud.firestore {
     }
 
     // 7. Form Submissions: public create with strict validation;
-    //    admin-only read, update, and delete (contains PII)
+    //    admin-only read, validated update, and delete (contains PII)
     match /form_submissions/{submissionId} {
       allow create: if isValidFormSubmissionCreate(request.resource.data);
-      allow read, update, delete: if isAdmin();
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin() && isValidFormSubmissionUpdate(request.resource.data);
     }
 
     // ===============================================================

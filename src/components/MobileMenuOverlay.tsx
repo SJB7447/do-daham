@@ -4,6 +4,7 @@ import { LogOut, Settings, ShieldCheck, GraduationCap, X } from 'lucide-react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { isAuthorizedAdmin } from '../data/defaultActivities';
+import { checkIsRegisteredInstructor } from '../lib/instructorsData';
 import { CrystalCube } from './CrystalCube';
 
 interface MobileMenuOverlayProps {
@@ -14,6 +15,7 @@ interface MobileMenuOverlayProps {
   mode?: 'public' | 'instructor';
   currentUser?: User | null;
   isAdmin?: boolean;
+  isInstructor?: boolean;
   onLogout?: () => void;
 }
 
@@ -76,12 +78,14 @@ export function MobileMenuOverlay({
   mode = 'public',
   currentUser,
   isAdmin,
+  isInstructor,
   onLogout
 }: MobileMenuOverlayProps) {
   const { pathname, search } = useLocation();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [fallbackUser, setFallbackUser] = useState<User | null>(() => auth.currentUser);
+  const [fallbackInstructor, setFallbackInstructor] = useState(false);
 
   useEffect(() => {
     if (currentUser !== undefined) return;
@@ -92,6 +96,24 @@ export function MobileMenuOverlay({
   const resolvedUser = currentUser !== undefined ? currentUser : fallbackUser;
   const resolvedIsAdmin =
     isAdmin !== undefined ? isAdmin : isAuthorizedAdmin(resolvedUser?.email);
+
+  useEffect(() => {
+    if (isInstructor !== undefined) return;
+    let cancelled = false;
+    if (!resolvedUser) {
+      setFallbackInstructor(false);
+      return;
+    }
+    checkIsRegisteredInstructor(resolvedUser).then((ok) => {
+      if (!cancelled) setFallbackInstructor(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedUser, isInstructor]);
+
+  const resolvedIsInstructor =
+    resolvedIsAdmin || (isInstructor !== undefined ? isInstructor : fallbackInstructor);
   const activeAdminTab = new URLSearchParams(search).get('tab') || 'content';
 
   const handleSignOut = async () => {
@@ -240,34 +262,36 @@ export function MobileMenuOverlay({
           })}
         </nav>
 
-        {/* Role-Based Quick Menus (Visible immediately after Instructor / Admin Sign-in) */}
-        {resolvedUser && (
+        {/* Role-Based Quick Menus (Visible ONLY to registered instructors / admin) */}
+        {(resolvedIsInstructor || resolvedIsAdmin) && (
           <div className="space-y-4 mb-6">
-            <div className="p-3.5 border border-[#C6FF00]/30 bg-[#C6FF00]/[0.05] rounded-[2px]">
-              <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-[0.12em] text-[#C6FF00] mb-2.5">
-                <GraduationCap size={14} aria-hidden="true" />
-                <span>강사 전용 메뉴</span>
+            {resolvedIsInstructor && (
+              <div className="p-3.5 border border-[#C6FF00]/30 bg-[#C6FF00]/[0.05] rounded-[2px]">
+                <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-[0.12em] text-[#C6FF00] mb-2.5">
+                  <GraduationCap size={14} aria-hidden="true" />
+                  <span>강사 전용 메뉴</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {INSTRUCTOR_QUICK_LINKS.map((link) => {
+                    const active = pathname === link.to;
+                    return (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        onClick={onClose}
+                        className={`text-[13px] font-semibold px-3 py-2.5 rounded-[2px] border transition-colors ${
+                          active
+                            ? 'border-[#C6FF00] bg-[#C6FF00] text-[#0A0A0A]'
+                            : 'border-white/[0.14] text-[#F2F2F2] hover:border-[#C6FF00] hover:text-[#C6FF00]'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {INSTRUCTOR_QUICK_LINKS.map((link) => {
-                  const active = pathname === link.to;
-                  return (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      onClick={onClose}
-                      className={`text-[13px] font-semibold px-3 py-2.5 rounded-[2px] border transition-colors ${
-                        active
-                          ? 'border-[#C6FF00] bg-[#C6FF00] text-[#0A0A0A]'
-                          : 'border-white/[0.14] text-[#F2F2F2] hover:border-[#C6FF00] hover:text-[#C6FF00]'
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             {resolvedIsAdmin && (
               <div className="p-3.5 border border-[#28C8F0]/35 bg-[#28C8F0]/[0.06] rounded-[2px]">

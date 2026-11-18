@@ -11,6 +11,7 @@ import {
   FieldFilter,
   InstructorProfile,
   WEEK_DAYS,
+  checkIsRegisteredInstructor,
   fetchApprovedInstructors,
   mergeInstructorsWithLead,
   toThemeAccent
@@ -32,6 +33,7 @@ export default function InstructorsPage() {
   const [metrics, setMetrics] = useState<LiveClassMetrics>(DEFAULT_METRICS);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [currentUser, setCurrentUser] = useState<User | null>(() => auth.currentUser);
+  const [isRegisteredInstructor, setIsRegisteredInstructor] = useState(false);
 
   useEffect(() => {
     fetchSiteSettings().then(setSiteSettings);
@@ -39,6 +41,20 @@ export default function InstructorsPage() {
     const unsub = onAuthStateChanged(auth, setCurrentUser);
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentUser) {
+      setIsRegisteredInstructor(false);
+      return;
+    }
+    checkIsRegisteredInstructor(currentUser).then((ok) => {
+      if (!cancelled) setIsRegisteredInstructor(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   const isAdmin = isAuthorizedAdmin(currentUser?.email);
   const canEditCard = (inst: InstructorProfile) =>
@@ -131,7 +147,7 @@ export default function InstructorsPage() {
             실제 AI 영상과 웹서비스를 제작·수상한 현업 디렉터와 승인된 파트너 강사진의 전문 분야 및 만나는 시간을 확인하세요.
           </p>
 
-          {currentUser && (
+          {currentUser && (isAdmin || isRegisteredInstructor) && (
             <div className="mt-6 flex flex-wrap items-center gap-2.5 pt-5 border-t border-white/[0.08]">
               <span className="text-xs font-bold text-[#A3A79F] mr-1">
                 {isAdmin ? '대표 강사 · 관리자 로그인됨' : '강사 계정 로그인됨'} ({currentUser.email})

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { AlertTriangle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
+import { clearApprovedInstructorsCache, markRegisteredInstructorCache } from '../lib/instructorsData';
 import { CrystalCube } from './CrystalCube';
 
 type InviteState = 'need_login' | 'loading' | 'valid' | 'used' | 'expired' | 'mismatch' | 'completed';
@@ -80,7 +81,7 @@ export default function JoinInvitePage() {
       setState('loading');
       try {
         const tokenHash = await sha256Hex(token);
-        const q = query(collection(db, 'invites'), where('tokenHash', '==', tokenHash));
+        const q = query(collection(db, 'invites'), where('tokenHash', '==', tokenHash), limit(1));
         const snap = await getDocs(q);
 
         if (cancelled) return;
@@ -175,6 +176,8 @@ export default function JoinInvitePage() {
             updatedAt: serverTimestamp()
           });
         }
+        markRegisteredInstructorCache(currentUser.uid);
+        clearApprovedInstructorsCache();
       }
       setState('completed');
     } catch (err: any) {

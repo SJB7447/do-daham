@@ -7,6 +7,7 @@ import {
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import { auth, storage } from '../lib/firebase';
+import { sanitizeExternalUrl } from '../lib/formSubmissions';
 import { CrystalCube } from './CrystalCube';
 import { SiteHeader } from './SiteHeader';
 import { ActivityItem, ActivityCategory } from '../types/activity';
@@ -204,6 +205,7 @@ export default function ActivityPage() {
       ]);
       const extraImgs = uploadedExtras.length > 0 ? uploadedExtras : undefined;
 
+      const cleanLink = sanitizeExternalUrl(formData.link, 2048);
       const newActivity: ActivityItem = {
         id: `act-custom-${Date.now()}`,
         category: formData.category,
@@ -212,7 +214,7 @@ export default function ActivityPage() {
         date: formData.date.trim() || new Date().toISOString().slice(0, 7).replace('-', '.'),
         imageUrl: primaryImg,
         additionalImages: extraImgs,
-        link: formData.link.trim() || undefined,
+        link: cleanLink || undefined,
         description: formData.description.trim(),
         tags: formData.tags
           ? formData.tags.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean)
@@ -615,17 +617,20 @@ export default function ActivityPage() {
                   ))}
                 </div>
 
-                {selectedItem.link && (
-                  <a
-                    href={selectedItem.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#28C8F0] text-black font-extrabold text-xs rounded-md hover:bg-white transition-all shadow-[0_0_15px_rgba(40,200,240,0.3)] self-start sm:self-auto"
-                  >
-                    <span>공식 기사 원문 보러가기</span>
-                    <ExternalLink size={14} />
-                  </a>
-                )}
+                {(() => {
+                  const safeLink = sanitizeExternalUrl(selectedItem.link, 2048);
+                  return safeLink ? (
+                    <a
+                      href={safeLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#28C8F0] text-black font-extrabold text-xs rounded-md hover:bg-white transition-all shadow-[0_0_15px_rgba(40,200,240,0.3)] self-start sm:self-auto"
+                    >
+                      <span>공식 기사 원문 보러가기</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>
